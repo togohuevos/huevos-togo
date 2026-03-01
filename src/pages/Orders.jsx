@@ -1,29 +1,133 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShoppingBag, Plus, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { ShoppingBag, Plus, Calendar, CheckCircle, Clock, MapPin, Pencil, Trash2, ChevronLeft, ChevronRight, Navigation, Check, MessageSquare } from 'lucide-react';
+
+// User color mapping
+const USER_COLORS = {
+    'Juan': '#60a5fa',   // azul claro
+    'Simón': '#86efac',  // verde claro
+};
+
+const getUserName = (email) => {
+    if (!email) return null;
+    if (email.includes('juan')) return 'Juan';
+    if (email.includes('simon')) return 'Simón';
+    return email.split('@')[0];
+};
+
+const toLocalDateStr = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getWeekRange = (offset) => {
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday + offset * 7);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { monday, sunday };
+};
+
+const formatWeekDate = (d) => d.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short' });
 
 export default function Orders() {
     const [orders, setOrders] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [newOrder, setNewOrder] = useState({
+    const [showForm, setShowForm] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [orderData, setOrderData] = useState({
         cliente_id: '',
         tipo_huevo: 'A',
         cantidad: 1,
         metodo_pago: 'Efectivo',
-        fecha_entrega: new Date().toISOString().split('T')[0]
+        fecha_entrega: toLocalDateStr(new Date())
     });
+
+    // Week filter state
+    const [viewMode, setViewMode] = useState('all'); // 'all', 'week', or 'route'
+    const [weekOffset, setWeekOffset] = useState(0);
+
+    // GPS location state for route
+    const [userLocation, setUserLocation] = useState(null);
+    const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, granted, denied
+    const DEFAULT_ORIGIN = 'Calle 15 #106-79, Ciudad Jardín, Cali, Colombia';
+
+    // Reverse Modal State
+    const [reverseModal, setReverseModal] = useState({ show: false, id: null, clientName: '' });
+
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState({ show: false, id: null, clientName: '' });
+
+    const [prices, setPrices] = useState({});
+
+    // Request geolocation when route mode is activated
+    useEffect(() => {
+        if (viewMode !== 'route') return;
+        if (!navigator.geolocation) {
+            setLocationStatus('denied');
+            return;
+        }
+        setLocationStatus('loading');
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setLocationStatus('granted');
+            },
+            () => {
+                setLocationStatus('denied');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }, [viewMode]);
 
     useEffect(() => {
         fetchOrders();
         fetchClientes();
+        getCurrentUser();
+        fetchPrices();
+
+        // Subscribe to real-time changes
+        const channel = supabase.channel('orders-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
+                fetchOrders();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
+
+    const fetchPrices = async () => {
+        const { data } = await supabase.from('precios_panales').select('*');
+        if (data) {
+            const priceMap = {};
+            data.forEach(p => {
+                const key = `${p.semana_inicio}_${p.tipo_huevo}`;
+                priceMap[key] = p.precio_venta;
+            });
+            setPrices(priceMap);
+        }
+    };
+
+    const getCurrentUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) setCurrentUser(getUserName(user.email));
+    };
 
     const fetchOrders = async () => {
         const { data } = await supabase
             .from('pedidos')
-            .select('*, clientes(nombre_completo)')
+            .select('*, clientes(*)')
             .order('fecha_entrega', { ascending: false });
         if (data) setOrders(data);
         setLoading(false);
@@ -34,40 +138,328 @@ export default function Orders() {
         if (data) setClientes(data);
     };
 
-    const handleAddOrder = async (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        const { data, error } = await supabase.from('pedidos').insert([newOrder]).select('*, clientes(nombre_completo)');
-        if (data) {
-            setOrders([data[0], ...orders]);
-            setShowAddForm(false);
-            setNewOrder({ cliente_id: '', tipo_huevo: 'A', cantidad: 1, metodo_pago: 'Efectivo', fecha_entrega: new Date().toISOString().split('T')[0] });
+
+        if (isEditing) {
+            const updatePayload = {
+                cliente_id: orderData.cliente_id,
+                tipo_huevo: orderData.tipo_huevo,
+                cantidad: orderData.cantidad,
+                metodo_pago: orderData.metodo_pago,
+                fecha_entrega: orderData.fecha_entrega
+            };
+            const { data, error } = await supabase
+                .from('pedidos')
+                .update(updatePayload)
+                .eq('id', orderData.id)
+                .select('*, clientes(*)');
+
+            if (data) {
+                setOrders(orders.map(o => o.id === data[0].id ? data[0] : o));
+                resetForm();
+            }
+        } else {
+            const { data, error } = await supabase
+                .from('pedidos')
+                .insert([orderData])
+                .select('*, clientes(*)');
+            if (data) {
+                setOrders([data[0], ...orders]);
+                resetForm();
+            }
         }
+    };
+
+    const resetForm = () => {
+        setShowForm(false);
+        setIsEditing(false);
+        setOrderData({
+            cliente_id: '',
+            tipo_huevo: 'A',
+            cantidad: 1,
+            metodo_pago: 'Efectivo',
+            fecha_entrega: toLocalDateStr(new Date())
+        });
+    };
+
+    const startEdit = (order) => {
+        setOrderData({
+            id: order.id,
+            cliente_id: order.cliente_id,
+            tipo_huevo: order.tipo_huevo,
+            cantidad: order.cantidad,
+            metodo_pago: order.metodo_pago,
+            fecha_entrega: order.fecha_entrega
+        });
+        setIsEditing(true);
+        setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const confirmDelete = async () => {
+        const { error } = await supabase
+            .from('pedidos')
+            .delete()
+            .eq('id', deleteModal.id);
+
+        if (!error) {
+            setOrders(orders.filter(o => o.id !== deleteModal.id));
+            setDeleteModal({ show: false, id: null, clientName: '' });
+        } else {
+            alert('Error al eliminar el pedido');
+        }
+    };
+
+    const sendWhatsAppReceipt = (order) => {
+        const monday = new Date(order.fecha_entrega);
+        const day = monday.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        monday.setDate(monday.getDate() + diff);
+        const mondayStr = monday.toISOString().split('T')[0];
+
+        const unitPrice = prices[`${mondayStr}_${order.tipo_huevo}`] || 0;
+        const total = Number(order.cantidad) * unitPrice;
+        const formatCurrency = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v);
+
+        const message = `*Huevos To-Go 🥚*\n\nHola ${order.clientes?.nombre_completo}! 👋\nConfirmamos la entrega de tu pedido:\n\n📦 *${order.cantidad} panales Tipo ${order.tipo_huevo}*\n💰 *Total: ${formatCurrency(total)}*\n💳 *Método: ${order.metodo_pago}*\n\n¡Gracias por tu compra! ✨`;
+        const encoded = encodeURIComponent(message);
+        window.open(`https://wa.me/57${order.clientes?.celular}?text=${encoded}`, '_blank');
     };
 
     const updateStatus = async (id, status) => {
-        const { error } = await supabase.from('pedidos').update({ estado: status }).eq('id', id);
+        const updateData = { estado: status };
+
+        if (status === 'Delivered') {
+            updateData.entregado_por = currentUser;
+            updateData.entregado_at = new Date().toISOString();
+        } else {
+            updateData.entregado_por = null;
+            updateData.entregado_at = null;
+        }
+
+        const { error } = await supabase.from('pedidos').update(updateData).eq('id', id);
         if (!error) {
-            setOrders(orders.map(o => o.id === id ? { ...o, estado: status } : o));
+            setOrders(orders.map(o => o.id === id ? { ...o, ...updateData } : o));
+
+            // Check for Auto-WhatsApp setting
+            const isAuto = localStorage.getItem('auto_whatsapp') === 'true';
+            if (status === 'Delivered' && isAuto) {
+                const order = orders.find(o => o.id === id);
+                if (order) {
+                    sendWhatsAppReceipt({ ...order, ...updateData });
+                }
+            }
         }
     };
 
+    const formatDeliveryTime = (isoString) => {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        return date.toLocaleString('es-CO', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    };
+
+    // Filter orders by week
+    const { monday, sunday } = getWeekRange(weekOffset);
+    const mondayStr = toLocalDateStr(monday);
+    const sundayStr = toLocalDateStr(sunday);
+    const filteredOrders = viewMode === 'week'
+        ? orders.filter(o => o.fecha_entrega >= mondayStr && o.fecha_entrega <= sundayStr)
+        : orders;
+
+    const weekLabel = weekOffset === 0 ? 'Esta Semana' : weekOffset === 1 ? 'Próxima Semana' : weekOffset === -1 ? 'Semana Pasada' : `Semana del ${formatWeekDate(monday)}`;
+
     return (
         <div style={{ padding: '1rem', paddingBottom: '5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Pedidos Semanales</h1>
-                <button className="btn btn-primary" onClick={() => setShowAddForm(true)}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Pedidos</h1>
+                <button className="btn btn-primary" onClick={() => setShowForm(true)}>
                     <Plus size={20} /> Nuevo
                 </button>
             </div>
 
-            {showAddForm && (
+            {/* View Mode Toggle */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button
+                    onClick={() => setViewMode('all')}
+                    style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        fontWeight: '600', fontSize: '0.8rem',
+                        backgroundColor: viewMode === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                        color: viewMode === 'all' ? 'white' : 'var(--text-muted)'
+                    }}
+                >
+                    Todos
+                </button>
+                <button
+                    onClick={() => setViewMode('week')}
+                    style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        fontWeight: '600', fontSize: '0.8rem',
+                        backgroundColor: viewMode === 'week' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                        color: viewMode === 'week' ? 'white' : 'var(--text-muted)'
+                    }}
+                >
+                    Semana
+                </button>
+                <button
+                    onClick={() => setViewMode('route')}
+                    style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        fontWeight: '600', fontSize: '0.8rem',
+                        backgroundColor: viewMode === 'route' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                        color: viewMode === 'route' ? 'white' : 'var(--text-muted)'
+                    }}
+                >
+                    🗺️ Ruta
+                </button>
+            </div>
+
+            {/* Week Selector (only when in week mode) */}
+            {viewMode === 'week' && (
+                <div className="glass" style={{
+                    padding: '0.75rem', borderRadius: '1rem', marginBottom: '1rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                    <button onClick={() => setWeekOffset(weekOffset - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.5rem' }}>
+                        <ChevronLeft size={24} />
+                    </button>
+                    <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>{weekLabel}</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                            {formatWeekDate(monday)} – {formatWeekDate(sunday)}
+                        </p>
+                    </div>
+                    <button onClick={() => setWeekOffset(weekOffset + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.5rem' }}>
+                        <ChevronRight size={24} />
+                    </button>
+                </div>
+            )}
+
+            {/* Route View */}
+            {viewMode === 'route' && (() => {
+                const pendingOrders = orders.filter(o => o.estado === 'Pending');
+                const addresses = pendingOrders
+                    .map(o => {
+                        const addr = o.clientes?.direccion || '';
+                        const unit = o.clientes?.unidad_apto || '';
+                        const num = o.clientes?.numero_casa || '';
+                        return { order: o, full: `${addr}${unit ? ' ' + unit : ''}${num ? ' (' + num + ')' : ''}`.trim() };
+                    })
+                    .filter(a => a.full);
+
+                const origin = userLocation
+                    ? `${userLocation.lat},${userLocation.lng}`
+                    : DEFAULT_ORIGIN;
+
+                const mapsUrl = addresses.length > 0
+                    ? `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${addresses.map(a => encodeURIComponent(a.full)).join('/')}`
+                    : null;
+
+                return (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <div className="glass" style={{ padding: '1rem', borderRadius: '1rem', marginBottom: '0.75rem' }}>
+                            <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Navigation size={18} style={{ color: 'var(--primary)' }} /> Ruta de Entregas
+                            </h2>
+
+                            {/* Origin indicator */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '0.75rem',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)', fontSize: '0.75rem'
+                            }}>
+                                <div style={{
+                                    width: '10px', height: '10px', borderRadius: '50%',
+                                    backgroundColor: locationStatus === 'granted' ? 'var(--accent)' : '#fbbf24',
+                                    flexShrink: 0
+                                }} />
+                                <span style={{ color: 'var(--text-muted)' }}>
+                                    {locationStatus === 'loading' ? '📡 Obteniendo ubicación...' :
+                                        locationStatus === 'granted' ? '📍 Usando tu ubicación actual' :
+                                            `📍 Desde: ${DEFAULT_ORIGIN}`}
+                                </span>
+                            </div>
+
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                                {pendingOrders.length} entregas pendientes
+                            </p>
+
+                            {pendingOrders.length === 0 ? (
+                                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>
+                                    ¡Todas las entregas completadas! 🎉
+                                </p>
+                            ) : (
+                                <>
+                                    {addresses.map((a, i) => (
+                                        <div key={a.order.id} style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                            padding: '0.6rem', borderRadius: '0.75rem',
+                                            backgroundColor: 'rgba(255,255,255,0.03)',
+                                            marginBottom: '0.5rem'
+                                        }}>
+                                            <div style={{
+                                                width: '28px', height: '28px', borderRadius: '50%',
+                                                backgroundColor: 'var(--primary)', color: 'white',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0
+                                            }}>
+                                                {i + 1}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ fontWeight: '600', fontSize: '0.85rem' }}>{a.order.clientes?.nombre_completo}</p>
+                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                    <MapPin size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> {a.full}
+                                                </p>
+                                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                    {a.order.cantidad} panales Tipo {a.order.tipo_huevo} · {a.order.metodo_pago}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => updateStatus(a.order.id, 'Delivered')}
+                                                style={{
+                                                    padding: '6px 10px', borderRadius: '8px', border: 'none',
+                                                    backgroundColor: 'rgba(16, 185, 129, 0.2)', color: 'var(--accent)',
+                                                    cursor: 'pointer', fontSize: '0.7rem', fontWeight: '600',
+                                                    display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0
+                                                }}
+                                            >
+                                                <Check size={14} /> Entregado
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    {mapsUrl && (
+                                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                                padding: '0.75rem', borderRadius: '0.75rem', marginTop: '0.75rem',
+                                                backgroundColor: 'var(--primary)', color: 'white', textDecoration: 'none',
+                                                fontWeight: '600', fontSize: '0.9rem'
+                                            }}>
+                                            <Navigation size={18} /> Iniciar Ruta en Google Maps
+                                        </a>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {showForm && (
                 <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', marginBottom: '1.5rem' }}>
-                    <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Nuevo Pedido</h2>
-                    <form onSubmit={handleAddOrder} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
+                        {isEditing ? 'Editar Pedido' : 'Nuevo Pedido'}
+                    </h2>
+                    <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <select
                             className="input"
-                            value={newOrder.cliente_id}
-                            onChange={e => setNewOrder({ ...newOrder, cliente_id: e.target.value })}
+                            value={orderData.cliente_id}
+                            onChange={e => setOrderData({ ...orderData, cliente_id: e.target.value })}
                             required
                         >
                             <option value="">Seleccionar Cliente</option>
@@ -75,7 +467,7 @@ export default function Orders() {
                         </select>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <select className="input" value={newOrder.tipo_huevo} onChange={e => setNewOrder({ ...newOrder, tipo_huevo: e.target.value })}>
+                            <select className="input" value={orderData.tipo_huevo} onChange={e => setOrderData({ ...orderData, tipo_huevo: e.target.value })}>
                                 <option value="A">Tipo A</option>
                                 <option value="AA">Tipo AA</option>
                                 <option value="AAA">Tipo AAA</option>
@@ -84,8 +476,8 @@ export default function Orders() {
                                 className="input"
                                 type="number"
                                 placeholder="Cant. Panales"
-                                value={newOrder.cantidad}
-                                onChange={e => setNewOrder({ ...newOrder, cantidad: e.target.value })}
+                                value={orderData.cantidad}
+                                onChange={e => setOrderData({ ...orderData, cantidad: e.target.value })}
                                 required
                             />
                         </div>
@@ -93,40 +485,163 @@ export default function Orders() {
                         <input
                             className="input"
                             type="date"
-                            value={newOrder.fecha_entrega}
-                            onChange={e => setNewOrder({ ...newOrder, fecha_entrega: e.target.value })}
+                            value={orderData.fecha_entrega}
+                            onChange={e => setOrderData({ ...orderData, fecha_entrega: e.target.value })}
                             required
                         />
 
-                        <select className="input" value={newOrder.metodo_pago} onChange={e => setNewOrder({ ...newOrder, metodo_pago: e.target.value })}>
+                        <select className="input" value={orderData.metodo_pago} onChange={e => setOrderData({ ...orderData, metodo_pago: e.target.value })}>
                             <option value="Efectivo">Efectivo</option>
                             <option value="Transferencia">Transferencia</option>
                             <option value="Otro">Otro</option>
                         </select>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn btn-primary" type="submit" style={{ flex: 1 }}>Registrar</button>
-                            <button className="btn" type="button" onClick={() => setShowAddForm(false)} style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' }}>Cancelar</button>
+                            <button className="btn btn-primary" type="submit" style={{ flex: 1 }}>
+                                {isEditing ? 'Guardar Cambios' : 'Registrar'}
+                            </button>
+                            <button className="btn" type="button" onClick={resetForm} style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                                Cancelar
+                            </button>
                         </div>
                     </form>
                 </div>
             )}
 
+            {/* Reverse Confirmation Modal */}
+            {reverseModal.show && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1000, padding: '2rem'
+                }}>
+                    <div className="glass" style={{ padding: '2rem', borderRadius: '1.5rem', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+                        <h3 style={{ marginBottom: '1rem' }}>¿Seguro que quieres marcar como pendiente?</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Pedido de: {reverseModal.clientName}</p>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                className="btn"
+                                style={{ flex: 1, backgroundColor: 'var(--accent)' }}
+                                onClick={() => {
+                                    updateStatus(reverseModal.id, 'Pending');
+                                    setReverseModal({ show: false, id: null, clientName: '' });
+                                }}
+                            >
+                                Sí
+                            </button>
+                            <button
+                                className="btn"
+                                style={{ flex: 1, backgroundColor: 'var(--danger)' }}
+                                onClick={() => setReverseModal({ show: false, id: null, clientName: '' })}
+                            >
+                                No
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteModal.show && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1000, padding: '2rem'
+                }}>
+                    <div className="glass" style={{ padding: '2rem', borderRadius: '1.5rem', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+                        <h3 style={{ marginBottom: '1rem' }}>¿Seguro que deseas eliminar este pedido?</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Pedido de: {deleteModal.clientName}</p>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                className="btn"
+                                style={{ flex: 1, backgroundColor: 'var(--accent)' }}
+                                onClick={confirmDelete}
+                            >
+                                Sí
+                            </button>
+                            <button
+                                className="btn"
+                                style={{ flex: 1, backgroundColor: 'var(--danger)' }}
+                                onClick={() => setDeleteModal({ show: false, id: null, clientName: '' })}
+                            >
+                                No
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {orders.map(order => (
+                {filteredOrders.length === 0 ? (
+                    <div className="glass" style={{ padding: '2rem', borderRadius: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No hay pedidos {viewMode === 'week' ? 'esta semana' : ''} 🎉
+                    </div>
+                ) : filteredOrders.map(order => (
                     <div key={order.id} className="glass" style={{ padding: '1rem', borderRadius: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                                 <h3 style={{ fontWeight: '600' }}>{order.clientes?.nombre_completo}</h3>
                                 <p style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{order.cantidad} panales - Tipo {order.tipo_huevo}</p>
                             </div>
-                            <div style={{
-                                padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem',
-                                backgroundColor: order.estado === 'Delivered' ? 'var(--accent)' : 'var(--primary)',
-                                color: 'white'
-                            }}>
-                                {order.estado === 'Delivered' ? 'Entregado' : 'Pendiente'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <button
+                                    onClick={() => startEdit(order)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setDeleteModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo })}
+                                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <div
+                                    onClick={() => {
+                                        if (order.estado === 'Delivered') {
+                                            setReverseModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo });
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem',
+                                        backgroundColor: order.estado === 'Delivered' ? 'var(--accent)' : 'var(--primary)',
+                                        color: 'white', cursor: order.estado === 'Delivered' ? 'pointer' : 'default'
+                                    }}
+                                >
+                                    {order.estado === 'Delivered' ? 'Entregado' : 'Pendiente'}
+                                </div>
                             </div>
+                        </div>
+
+                        {/* Delivery Info */}
+                        {order.estado === 'Delivered' && order.entregado_por && (
+                            <div style={{
+                                marginTop: '0.5rem', padding: '4px 10px', borderRadius: '8px',
+                                backgroundColor: 'rgba(0,0,0,0.2)', display: 'inline-flex',
+                                alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem'
+                            }}>
+                                <CheckCircle size={14} style={{ color: USER_COLORS[order.entregado_por] || '#ccc' }} />
+                                <span>
+                                    Entregado por{' '}
+                                    <strong style={{ color: USER_COLORS[order.entregado_por] || '#ccc' }}>
+                                        {order.entregado_por}
+                                    </strong>
+                                </span>
+                                {order.entregado_at && (
+                                    <span style={{ color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
+                                        · {formatDeliveryTime(order.entregado_at)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            <MapPin size={14} />
+                            <span>
+                                {order.clientes?.direccion}
+                                {(order.clientes?.unidad_apto || order.clientes?.numero_casa) && ' - '}
+                                {order.clientes?.unidad_apto} {order.clientes?.numero_casa && `(${order.clientes?.numero_casa})`}
+                            </span>
                         </div>
 
                         <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -140,6 +655,19 @@ export default function Orders() {
                                     onClick={() => updateStatus(order.id, 'Delivered')}
                                 >
                                     Marcar Entregado
+                                </button>
+                            )}
+                            {order.estado === 'Delivered' && (
+                                <button
+                                    onClick={() => sendWhatsAppReceipt(order)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                        backgroundColor: '#25D366', color: 'white', border: 'none',
+                                        padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem',
+                                        fontWeight: '600', cursor: 'pointer'
+                                    }}
+                                >
+                                    <MessageSquare size={14} /> Enviar Recibo
                                 </button>
                             )}
                         </div>

@@ -1,0 +1,17 @@
+{
+    "name": "Huevos To-Go",
+    "short_name": "HuevosToGo",
+    "description": "Sistema de gestión profesional para Huevos To-Go",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#f59e0b",
+    "icons": [
+        {
+            "src": "/logo-pwa.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

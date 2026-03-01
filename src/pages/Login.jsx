@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Egg, Lock, Mail } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -20,10 +20,20 @@ export default function Login() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            backgroundImage: 'url("/fondo-granja.png")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+        }}>
             <div className="glass" style={{ width: '100%', maxWidth: '400px', padding: '2rem', borderRadius: '1.5rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <Egg size={48} color="#f59e0b" style={{ marginBottom: '1rem' }} />
+                    <img src="/personaje.png" alt="Logo" style={{ width: '80px', height: '80px', marginBottom: '1rem', borderRadius: '50%', objectFit: 'cover' }} />
                     <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Huevos To-Go</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Panel Administrativo</p>
                 </div>
