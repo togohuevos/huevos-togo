@@ -29,12 +29,18 @@ export default function Clients() {
 
     const fetchClientes = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('clientes')
-            .select('*')
-            .order('nombre_completo');
-        if (data) setClientes(data);
-        setLoading(false);
+        try {
+            const { data, error } = await supabase
+                .from('clientes')
+                .select('*')
+                .order('nombre_completo');
+            if (error) console.error('Error fetching clients:', error);
+            if (data) setClientes(data);
+        } catch (err) {
+            console.error('Unexpected error:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSave = async (e) => {
@@ -150,8 +156,8 @@ export default function Clients() {
     };
 
     const filteredClientes = clientes.filter(c =>
-        c.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.celular.includes(searchTerm)
+        (c.nombre_completo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.celular || '').includes(searchTerm)
     );
 
     return (
