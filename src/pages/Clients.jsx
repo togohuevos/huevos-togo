@@ -21,6 +21,7 @@ export default function Clients() {
     const [clientHistory, setClientHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [stats, setStats] = useState({ totalPanales: 0, totalPaid: 0 });
+    const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '' });
 
     useEffect(() => {
         fetchClientes();
