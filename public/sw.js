@@ -1,59 +1,49 @@
-// Service Worker v2 - Network-first strategy for app shell
-// This ensures users always get the latest version on each visit
+// Service Worker v3 - Network-first strategy for ALL resources
+// Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v2';
-const STATIC_ASSETS = [
-    '/logo.jpg',
-    '/logo-pwa.png',
-    '/manifest.json'
-];
+const CACHE_NAME = 'huevos-togo-v3';
+const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {
-    // Force immediate activation without waiting for old SW to finish
+    // Activate immediately, don't wait
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
-        })
+        caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_IMAGES))
     );
 });
 
 self.addEventListener('activate', (event) => {
-    // Delete old caches that don't match current version
+    // Delete ALL old caches on activation
     event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(
-                keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-            )
-        ).then(() => self.clients.claim())
+        caches.keys()
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+            .then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // ALWAYS fetch HTML from network (never cache index.html)
-    if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
-        event.respondWith(fetch(event.request));
+    // Skip non-GET requests and cross-origin requests
+    if (event.request.method !== 'GET' || !url.origin.startsWith(self.location.origin)) {
         return;
     }
 
-    // For JS/CSS assets: network-first, fallback to cache
-    if (url.pathname.startsWith('/assets/')) {
-        event.respondWith(
-            fetch(event.request)
-                .then(response => {
+    // NETWORK-FIRST for everything: HTML, JS, CSS, fonts, etc.
+    // This ensures updates from Vercel are always picked up immediately
+    event.respondWith(
+        fetch(event.request)
+            .then(response => {
+                // Cache a copy of static images only
+                if (STATIC_IMAGES.includes(url.pathname)) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                    return response;
-                })
-                .catch(() => caches.match(event.request))
-        );
-        return;
-    }
-
-    // Static assets: cache-first
-    event.respondWith(
-        caches.match(event.request).then(response => response || fetch(event.request))
+                }
+                return response;
+            })
+            .catch(() => {
+                // Fallback to cache only if offline
+                return caches.match(event.request);
+            })
     );
 });
