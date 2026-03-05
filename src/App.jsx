@@ -9,12 +9,14 @@ import Dashboard from './pages/Dashboard';
 import { useState, useEffect } from 'react';
 import { Users, ShoppingBag, MessageSquare, Calculator, LogOut, Home, X, Sun, Moon, RefreshCw } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { APP_VERSION, CHANGELOG } from './version';
 
 function App() {
   const { user, loading } = useAuth();
   const { notifications, dismissToast } = useNotifications();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [showChangelog, setShowChangelog] = useState(false);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -61,7 +63,26 @@ function App() {
       )}
       {/* Header */}
       <header style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>Huevos To-Go</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2 style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>Huevos To-Go</h2>
+          <button
+            onClick={() => setShowChangelog(true)}
+            title="Ver novedades"
+            style={{
+              background: 'rgba(245, 158, 11, 0.15)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              padding: '2px 7px',
+              borderRadius: '999px',
+              fontSize: '0.65rem',
+              fontWeight: '700',
+              letterSpacing: '0.03em'
+            }}
+          >
+            v{APP_VERSION}
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
             onClick={toggleTheme}
@@ -155,6 +176,67 @@ function App() {
           <span style={{ fontSize: '0.65rem' }}>Contable</span>
         </button>
       </nav>
+
+      {/* Changelog Modal */}
+      {showChangelog && (
+        <div
+          onClick={() => setShowChangelog(false)}
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
+            zIndex: 3000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="glass"
+            style={{
+              width: '100%', maxWidth: '600px', borderRadius: '1.5rem 1.5rem 0 0',
+              padding: '1.5rem', maxHeight: '80vh', overflowY: 'auto'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Historial de Versiones</h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Versión actual: {APP_VERSION}</p>
+              </div>
+              <button onClick={() => setShowChangelog(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {CHANGELOG.map((release, idx) => (
+              <div key={release.version} style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <span style={{
+                    background: idx === 0 ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                    color: idx === 0 ? '#000' : 'var(--text-muted)',
+                    borderRadius: '999px', padding: '2px 10px',
+                    fontSize: '0.75rem', fontWeight: '700'
+                  }}>
+                    v{release.version}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{release.date}</span>
+                  {idx === 0 && (
+                    <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '600', marginLeft: '4px' }}>● Actual</span>
+                  )}
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {release.changes.map((change, i) => (
+                    <li key={i} style={{ display: 'flex', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                      <span style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '1px' }}>•</span>
+                      <span>{change}</span>
+                    </li>
+                  ))}
+                </ul>
+                {idx < CHANGELOG.length - 1 && (
+                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', marginTop: '1.25rem' }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
