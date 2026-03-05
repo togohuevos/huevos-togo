@@ -473,96 +473,36 @@ export default function Orders() {
                         {isEditing ? 'Editar Pedido' : 'Nuevo Pedido'}
                     </h2>
                     <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {/* Custom Searchable Select for Customers */}
+                        {/* Searchable datalist for client */}
                         <div style={{ position: 'relative' }}>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    type="text"
-                                    className="input"
-                                    placeholder="🔍 Buscar cliente..."
-                                    value={clientSearchTerm}
-                                    onFocus={() => {
-                                        setIsClientListOpen(true);
-                                    }}
-                                    onBlur={() => {
-                                        // Delay so click on a list item fires first
-                                        setTimeout(() => setIsClientListOpen(false), 250);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && isClientListOpen) {
-                                            e.preventDefault();
-                                            const firstResult = clientes.filter(c =>
-                                                (c.nombre_completo || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase())
-                                            )[0];
-                                            if (firstResult) {
-                                                setOrderData({ ...orderData, cliente_id: firstResult.id });
-                                                setClientSearchTerm(firstResult.nombre_completo || '');
-                                                setIsClientListOpen(false);
-                                            }
-                                        }
-                                    }}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        setClientSearchTerm(val);
-                                        setIsClientListOpen(true);
-                                        if (val === '') {
-                                            setOrderData({ ...orderData, cliente_id: '' });
-                                        }
-                                    }}
-                                    style={{ paddingRight: '2.5rem' }}
-                                />
-                                {clientSearchTerm && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setClientSearchTerm('');
-                                            setOrderData({ ...orderData, cliente_id: '' });
-                                            setIsClientListOpen(true);
-                                        }}
-                                        style={{
-                                            position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                                            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer'
-                                        }}
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                )}
-                            </div>
-                            {isClientListOpen && (
-                                <div className="glass" style={{
-                                    position: 'absolute', top: '100%', left: 0, right: 0,
-                                    maxHeight: '200px', overflowY: 'auto', zIndex: 10,
-                                    borderRadius: '0 0 1rem 1rem', borderTop: 'none',
-                                    backgroundColor: 'var(--bg-card)',
-                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)'
-                                }}>
-                                    {clientes
-                                        .filter(c => (c.nombre_completo || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase()))
-                                        .map(c => (
-                                            <div
-                                                key={c.id}
-                                                onMouseDown={(e) => e.preventDefault()}
-                                                style={{
-                                                    padding: '0.75rem',
-                                                    cursor: 'pointer',
-                                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                                    backgroundColor: orderData.cliente_id === c.id ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                                                    color: orderData.cliente_id === c.id ? 'var(--primary)' : 'inherit'
-                                                }}
-                                                onClick={() => {
-                                                    setOrderData({ ...orderData, cliente_id: c.id });
-                                                    setClientSearchTerm(c.nombre_completo || '');
-                                                    setIsClientListOpen(false);
-                                                }}
-                                            >
-                                                {c.nombre_completo}
-                                                {orderData.cliente_id === c.id && <Check size={14} style={{ marginLeft: '8px' }} />}
-                                            </div>
-                                        ))}
-                                    {clientes.filter(c => (c.nombre_completo || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase())).length === 0 && (
-                                        <div style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No se encontraron resultados</div>
-                                    )}
-                                </div>
+                            <input
+                                type="text"
+                                className="input"
+                                list="clientes-list"
+                                placeholder="🔍 Buscar cliente..."
+                                value={clientSearchTerm}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setClientSearchTerm(val);
+                                    const match = clientes.find(c =>
+                                        (c.nombre_completo || '').toLowerCase() === val.toLowerCase()
+                                    );
+                                    setOrderData({ ...orderData, cliente_id: match ? match.id : '' });
+                                }}
+                                required
+                                style={{ width: '100%' }}
+                            />
+                            <datalist id="clientes-list">
+                                {clientes.map(c => (
+                                    <option key={c.id} value={c.nombre_completo || ''} />
+                                ))}
+                            </datalist>
+                            {orderData.cliente_id && (
+                                <span style={{
+                                    position: 'absolute', right: '12px', top: '50%',
+                                    transform: 'translateY(-50%)', color: 'var(--primary)',
+                                    fontSize: '0.75rem', fontWeight: '600', pointerEvents: 'none'
+                                }}>✓</span>
                             )}
                         </div>
 
