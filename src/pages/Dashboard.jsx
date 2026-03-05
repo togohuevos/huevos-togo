@@ -78,146 +78,152 @@ export default function Dashboard() {
     }, []);
 
     const loadDashboard = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        const name = user ? getUserName(user.email) : '';
-        setCurrentUser(name);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const name = user ? getUserName(user.email) : '';
+            setCurrentUser(name);
 
-        const hour = new Date().getHours();
-        if (hour < 12) setGreeting('Buenos días');
-        else if (hour < 18) setGreeting('Buenas tardes');
-        else setGreeting('Buenas noches');
+            const hour = new Date().getHours();
+            if (hour < 12) setGreeting('Buenos días');
+            else if (hour < 18) setGreeting('Buenas tardes');
+            else setGreeting('Buenas noches');
 
-        const { monday, sunday } = getWeekRange();
-        const mondayStr = toLocalDateStr(monday);
-        const sundayStr = toLocalDateStr(sunday);
+            // Define the global range (last 4 weeks)
+            const { monday: currentMonday } = getWeekRange(0);
+            const { monday: oldestMonday } = getWeekRange(-3);
+            const startDateStr = toLocalDateStr(oldestMonday);
 
-        // Fetch weekly orders
-        const { data: weekOrders } = await supabase
-            .from('pedidos').select('*, clientes(nombre_completo)')
-            .gte('fecha_entrega', mondayStr).lte('fecha_entrega', sundayStr);
+            // PARALLEL FETCH: Fetch all necessary data at once
+            const [
+                { data: allOrders },
+                { data: allPrices },
+                { data: complaints }
+            ] = await Promise.all([
+                supabase.from('pedidos').select('*, clientes(nombre_completo)').gte('fecha_entrega', startDateStr),
+                supabase.from('precios_panales').select('*').gte('semana_inicio', startDateStr),
+                supabase.from('quejas').select('*, clientes(nombre_completo)').eq('resuelta', false)
+            ]);
 
-        // Fetch weekly prices
-        const { data: pricesData } = await supabase
-            .from('precios_panales').select('*').eq('semana_inicio', mondayStr);
+            if (!allOrders || !allPrices) {
+                setLoading(false);
+                return;
+            }
 
-        const prices = { A: { compra: 0, venta: 0 }, AA: { compra: 0, venta: 0 }, AAA: { compra: 0, venta: 0 } };
-        if (pricesData) pricesData.forEach(r => { prices[r.tipo_huevo] = { compra: r.precio_compra || 0, venta: r.precio_venta || 0 }; });
+            // Organize data in memory
+            const currentWeekRange = getWeekRange(0);
+            const cMonStr = toLocalDateStr(currentWeekRange.monday);
+            const cSunStr = toLocalDateStr(currentWeekRange.sunday);
 
-        // Fetch unresolved complaints
-        const { data: complaints } = await supabase
-            .from('quejas').select('*, clientes(nombre_completo)')
-            .eq('resuelta', false);
-
-        // Calculate stats
-        const pending = weekOrders ? weekOrders.filter(o => o.estado === 'Pending') : [];
-        const delivered = weekOrders ? weekOrders.filter(o => o.estado === 'Delivered') : [];
-        const totalPanales = weekOrders ? weekOrders.reduce((s, o) => s + Number(o.cantidad), 0) : 0;
-
-        let income = 0, investment = 0;
-        if (weekOrders) {
-            weekOrders.forEach(o => {
-                income += Number(o.cantidad) * (prices[o.tipo_huevo]?.venta || 0);
-                investment += Number(o.cantidad) * (prices[o.tipo_huevo]?.compra || 0);
+            const activeWeekOrders = allOrders.filter(o => o.fecha_entrega >= cMonStr && o.fecha_entrega <= cSunStr);
+            const activePrices = { A: { c: 0, v: 0 }, AA: { c: 0, v: 0 }, AAA: { c: 0, v: 0 } };
+            allPrices.filter(p => p.semana_inicio === cMonStr).forEach(r => {
+                activePrices[r.tipo_huevo] = { c: r.precio_compra || 0, v: r.precio_venta || 0 };
             });
-        }
 
-        setStats({
-            pendingOrders: pending.length,
-            deliveredOrders: delivered.length,
-            totalPanales,
-            unresolvedComplaints: complaints ? complaints.length : 0,
-            weeklyIncome: income,
-            weeklyInvestment: investment,
-            weeklyProfit: income - investment,
-        });
+            const pending = activeWeekOrders.filter(o => o.estado === 'Pending');
+            const delivered = activeWeekOrders.filter(o => o.estado === 'Delivered');
+            const totalPanales = activeWeekOrders.reduce((s, o) => s + Number(o.cantidad), 0);
 
-        // Fetch last week data for comparison
-        const { monday: lastMonday, sunday: lastSunday } = getWeekRange(-1);
-        const lastMondayStr = toLocalDateStr(lastMonday);
-        const lastSundayStr = toLocalDateStr(lastSunday);
-        const { data: lastWeekOrders } = await supabase
-            .from('pedidos').select('cantidad, tipo_huevo')
-            .gte('fecha_entrega', lastMondayStr).lte('fecha_entrega', lastSundayStr);
-
-        const { data: lastPricesData } = await supabase
-            .from('precios_panales').select('*').eq('semana_inicio', lastMondayStr);
-        const lastPrices = { A: { compra: 0, venta: 0 }, AA: { compra: 0, venta: 0 }, AAA: { compra: 0, venta: 0 } };
-        if (lastPricesData) lastPricesData.forEach(r => { lastPrices[r.tipo_huevo] = { compra: r.precio_compra || 0, venta: r.precio_venta || 0 }; });
-
-        if (lastWeekOrders && lastWeekOrders.length > 0) {
-            const lastPanales = lastWeekOrders.reduce((s, o) => s + Number(o.cantidad), 0);
-            let lastIncome = 0;
-            lastWeekOrders.forEach(o => { lastIncome += Number(o.cantidad) * (lastPrices[o.tipo_huevo]?.venta || 0); });
-            const panalesDiff = lastPanales > 0 ? Math.round(((totalPanales - lastPanales) / lastPanales) * 100) : 0;
-            const incomeDiff = lastIncome > 0 ? Math.round(((income - lastIncome) / lastIncome) * 100) : 0;
-            setComparison({ panalesDiff, incomeDiff, lastPanales, lastIncome });
-        }
-
-        // Fetch 4-week history for the chart
-        const history = [];
-        for (let i = 0; i < 4; i++) {
-            const { monday: m, sunday: s } = getWeekRange(-i);
-            const mStr = toLocalDateStr(m);
-            const sStr = toLocalDateStr(s);
-
-            const { data: wo } = await supabase.from('pedidos').select('cantidad, tipo_huevo').gte('fecha_entrega', mStr).lte('fecha_entrega', sStr);
-            const { data: pr } = await supabase.from('precios_panales').select('*').eq('semana_inicio', mStr);
-
-            const lookup = { A: { c: 0, v: 0 }, AA: { c: 0, v: 0 }, AAA: { c: 0, v: 0 } };
-            if (pr) pr.forEach(r => { lookup[r.tipo_huevo] = { c: r.precio_compra || 0, v: r.precio_venta || 0 }; });
-
-            let win = 0, wco = 0;
-            if (wo) wo.forEach(o => { win += Number(o.cantidad) * (lookup[o.tipo_huevo]?.v || 0); wco += Number(o.cantidad) * (lookup[o.tipo_huevo]?.c || 0); });
-
-            history.unshift({
-                name: `S-${4 - i}`,
-                ingresos: win,
-                costos: wco,
-                label: `${m.getDate()}/${m.getMonth() + 1}`
+            let income = 0, investment = 0;
+            activeWeekOrders.forEach(o => {
+                income += Number(o.cantidad) * (activePrices[o.tipo_huevo]?.v || 0);
+                investment += Number(o.cantidad) * (activePrices[o.tipo_huevo]?.c || 0);
             });
-        }
-        setHistoryData(history);
 
-        // Build recent activity
-        const activities = [];
+            setStats({
+                pendingOrders: pending.length,
+                deliveredOrders: delivered.length,
+                totalPanales,
+                unresolvedComplaints: complaints ? complaints.length : 0,
+                weeklyIncome: income,
+                weeklyInvestment: investment,
+                weeklyProfit: income - investment,
+            });
 
-        // Recent delivered orders
-        if (delivered.length > 0) {
-            delivered.slice(0, 3).forEach(o => {
-                activities.push({
-                    type: 'delivered',
-                    text: `Pedido entregado a ${o.clientes?.nombre_completo}`,
-                    detail: `${o.cantidad} panales Tipo ${o.tipo_huevo}`,
-                    user: o.entregado_por,
-                    time: o.entregado_at
+            // Comparison data
+            const lastWeekRange = getWeekRange(-1);
+            const lMonStr = toLocalDateStr(lastWeekRange.monday);
+            const lSunStr = toLocalDateStr(lastWeekRange.sunday);
+            const lastWeekOrders = allOrders.filter(o => o.fecha_entrega >= lMonStr && o.fecha_entrega <= lSunStr);
+            const lastPrices = { A: { c: 0, v: 0 }, AA: { c: 0, v: 0 }, AAA: { c: 0, v: 0 } };
+            allPrices.filter(p => p.semana_inicio === lMonStr).forEach(r => {
+                lastPrices[r.tipo_huevo] = { c: r.precio_compra || 0, v: r.precio_venta || 0 };
+            });
+
+            if (lastWeekOrders.length > 0) {
+                const lastPanales = lastWeekOrders.reduce((s, o) => s + Number(o.cantidad), 0);
+                let lastIncome = 0;
+                lastWeekOrders.forEach(o => { lastIncome += Number(o.cantidad) * (lastPrices[o.tipo_huevo]?.v || 0); });
+                const panalesDiff = lastPanales > 0 ? Math.round(((totalPanales - lastPanales) / lastPanales) * 100) : 0;
+                const incomeDiff = lastIncome > 0 ? Math.round(((income - lastIncome) / lastIncome) * 100) : 0;
+                setComparison({ panalesDiff, incomeDiff, lastPanales, lastIncome });
+            }
+
+            // Chart history (4 weeks)
+            const history = [];
+            for (let i = 0; i < 4; i++) {
+                const { monday: m, sunday: s } = getWeekRange(-i);
+                const mStr = toLocalDateStr(m);
+                const sStr = toLocalDateStr(s);
+
+                const weekOrders = allOrders.filter(o => o.fecha_entrega >= mStr && o.fecha_entrega <= sStr);
+                const weekPrices = { A: { c: 0, v: 0 }, AA: { c: 0, v: 0 }, AAA: { c: 0, v: 0 } };
+                allPrices.filter(p => p.semana_inicio === mStr).forEach(r => {
+                    weekPrices[r.tipo_huevo] = { c: r.precio_compra || 0, v: r.precio_venta || 0 };
                 });
-            });
-        }
 
-        // Pending orders
-        if (pending.length > 0) {
-            pending.slice(0, 3).forEach(o => {
-                activities.push({
-                    type: 'pending',
-                    text: `Pedido pendiente de ${o.clientes?.nombre_completo}`,
-                    detail: `${o.cantidad} panales Tipo ${o.tipo_huevo} — ${o.fecha_entrega}`,
+                let win = 0, wco = 0;
+                weekOrders.forEach(o => {
+                    win += Number(o.cantidad) * (weekPrices[o.tipo_huevo]?.v || 0);
+                    wco += Number(o.cantidad) * (weekPrices[o.tipo_huevo]?.c || 0);
                 });
-            });
-        }
 
-        // Unresolved complaints
-        if (complaints && complaints.length > 0) {
-            complaints.slice(0, 2).forEach(q => {
-                activities.push({
-                    type: 'complaint',
-                    text: `Queja de ${q.clientes?.nombre_completo}`,
-                    detail: q.descripcion?.substring(0, 60) + (q.descripcion?.length > 60 ? '...' : ''),
+                history.unshift({
+                    name: `S-${4 - i}`,
+                    ingresos: win,
+                    costos: wco,
+                    label: `${m.getDate()}/${m.getMonth() + 1}`
                 });
-            });
-        }
+            }
+            setHistoryData(history);
 
-        setRecentActivity(activities);
-        setLoading(false);
+            // Activity activity build
+            const activities = [];
+            if (delivered.length > 0) {
+                delivered.slice(0, 3).forEach(o => {
+                    activities.push({
+                        type: 'delivered',
+                        text: `Pedido entregado a ${o.clientes?.nombre_completo}`,
+                        detail: `${o.cantidad} panales Tipo ${o.tipo_huevo}`,
+                        user: o.entregado_por,
+                        time: o.entregado_at
+                    });
+                });
+            }
+            if (pending.length > 0) {
+                pending.slice(0, 3).forEach(o => {
+                    activities.push({
+                        type: 'pending',
+                        text: `Pedido pendiente de ${o.clientes?.nombre_completo}`,
+                        detail: `${o.cantidad} panales Tipo ${o.tipo_huevo} — ${o.fecha_entrega}`,
+                    });
+                });
+            }
+            if (complaints && complaints.length > 0) {
+                complaints.slice(0, 2).forEach(q => {
+                    activities.push({
+                        type: 'complaint',
+                        text: `Queja de ${q.clientes?.nombre_completo}`,
+                        detail: q.descripcion?.substring(0, 60) + (q.descripcion?.length > 60 ? '...' : ''),
+                    });
+                });
+            }
+            setRecentActivity(activities);
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const formatTime = (iso) => {

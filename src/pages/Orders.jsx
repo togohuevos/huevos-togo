@@ -61,6 +61,13 @@ export default function Orders() {
     const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, granted, denied
     const DEFAULT_ORIGIN = 'Calle 15 #106-79, Ciudad Jardín, Cali, Colombia';
 
+    // WhatsApp settings reactivity
+    const [autoWhatsApp, setAutoWhatsApp] = useState(localStorage.getItem('auto_whatsapp') === 'true');
+
+    // Customer search state
+    const [clientSearchTerm, setClientSearchTerm] = useState('');
+    const [isClientListOpen, setIsClientListOpen] = useState(false);
+
     // Reverse Modal State
     const [reverseModal, setReverseModal] = useState({ show: false, id: null, clientName: '' });
 
@@ -95,6 +102,12 @@ export default function Orders() {
         getCurrentUser();
         fetchPrices();
 
+        // Listen for WhatsApp setting changes from Dashboard
+        const handleWachange = () => {
+            setAutoWhatsApp(localStorage.getItem('auto_whatsapp') === 'true');
+        };
+        window.addEventListener('auto_whatsapp_changed', handleWachange);
+
         // Subscribe to real-time changes
         const channel = supabase.channel('orders-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
@@ -104,6 +117,7 @@ export default function Orders() {
 
         return () => {
             supabase.removeChannel(channel);
+            window.removeEventListener('auto_whatsapp_changed', handleWachange);
         };
     }, []);
 
@@ -181,6 +195,7 @@ export default function Orders() {
             metodo_pago: 'Efectivo',
             fecha_entrega: toLocalDateStr(new Date())
         });
+        setClientSearchTerm('');
     };
 
     const startEdit = (order) => {
@@ -192,6 +207,7 @@ export default function Orders() {
             metodo_pago: order.metodo_pago,
             fecha_entrega: order.fecha_entrega
         });
+        setClientSearchTerm(order.clientes?.nombre_completo || '');
         setIsEditing(true);
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -242,9 +258,10 @@ export default function Orders() {
         if (!error) {
             setOrders(orders.map(o => o.id === id ? { ...o, ...updateData } : o));
 
-            // Check for Auto-WhatsApp setting
-            const isAuto = localStorage.getItem('auto_whatsapp') === 'true';
-            if (status === 'Delivered' && isAuto) {
+            // Get the freshest value of autoWhatsApp because the state might be stale in this closure
+            const isAutoWa = localStorage.getItem('auto_whatsapp') === 'true';
+
+            if (status === 'Delivered' && isAutoWa) {
                 const order = orders.find(o => o.id === id);
                 if (order) {
                     sendWhatsAppReceipt({ ...order, ...updateData });
@@ -456,15 +473,95 @@ export default function Orders() {
                         {isEditing ? 'Editar Pedido' : 'Nuevo Pedido'}
                     </h2>
                     <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <select
-                            className="input"
-                            value={orderData.cliente_id}
-                            onChange={e => setOrderData({ ...orderData, cliente_id: e.target.value })}
-                            required
-                        >
-                            <option value="">Seleccionar Cliente</option>
-                            {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre_completo}</option>)}
-                        </select>
+                        {/* Custom Searchable Select for Customers */}
+                        <div style={{ position: 'relative' }}>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="🔍 Buscar cliente..."
+                                    value={clientSearchTerm}
+                                    onFocus={() => {
+                                        setIsClientListOpen(true);
+                                    }}
+                                    onBlur={() => {
+                                        // Delay closing to allow clicking on a result
+                                        setTimeout(() => setIsClientListOpen(false), 200);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && isClientListOpen) {
+                                            const firstResult = clientes.filter(c => c.nombre_completo.toLowerCase().includes(clientSearchTerm.toLowerCase()))[0];
+                                            if (firstResult) {
+                                                setOrderData({ ...orderData, cliente_id: firstResult.id });
+                                                setClientSearchTerm(firstResult.nombre_completo);
+                                                setIsClientListOpen(false);
+                                                e.preventDefault();
+                                            }
+                                        }
+                                    }}
+                                    onChange={e => {
+                                        setClientSearchTerm(e.target.value);
+                                        setIsClientListOpen(true);
+                                        // If the user clears the input, clear the selection
+                                        if (e.target.value === '') {
+                                            setOrderData({ ...orderData, cliente_id: '' });
+                                        }
+                                    }}
+                                    style={{ paddingRight: '2.5rem' }}
+                                />
+                                {clientSearchTerm && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setClientSearchTerm('');
+                                            setOrderData({ ...orderData, cliente_id: '' });
+                                            setIsClientListOpen(true);
+                                        }}
+                                        style={{
+                                            position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer'
+                                        }}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
+                            {isClientListOpen && (
+                                <div className="glass" style={{
+                                    position: 'absolute', top: '100%', left: 0, right: 0,
+                                    maxHeight: '200px', overflowY: 'auto', zIndex: 10,
+                                    borderRadius: '0 0 1rem 1rem', borderTop: 'none',
+                                    backgroundColor: 'var(--bg-card)',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)'
+                                }}>
+                                    {clientes
+                                        .filter(c => c.nombre_completo.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+                                        .map(c => (
+                                            <div
+                                                key={c.id}
+                                                style={{
+                                                    padding: '0.75rem',
+                                                    cursor: 'pointer',
+                                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                    backgroundColor: orderData.cliente_id === c.id ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                                                    color: orderData.cliente_id === c.id ? 'var(--primary)' : 'inherit'
+                                                }}
+                                                onClick={() => {
+                                                    setOrderData({ ...orderData, cliente_id: c.id });
+                                                    setClientSearchTerm(c.nombre_completo);
+                                                    setIsClientListOpen(false);
+                                                }}
+                                            >
+                                                {c.nombre_completo}
+                                                {orderData.cliente_id === c.id && <Check size={14} style={{ marginLeft: '8px' }} />}
+                                            </div>
+                                        ))}
+                                    {clientes.filter(c => c.nombre_completo.toLowerCase().includes(clientSearchTerm.toLowerCase())).length === 0 && (
+                                        <div style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No se encontraron resultados</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <select className="input" value={orderData.tipo_huevo} onChange={e => setOrderData({ ...orderData, tipo_huevo: e.target.value })}>
@@ -657,7 +754,7 @@ export default function Orders() {
                                     Marcar Entregado
                                 </button>
                             )}
-                            {order.estado === 'Delivered' && (
+                            {order.estado === 'Delivered' && (localStorage.getItem('auto_whatsapp') === 'true') && (
                                 <button
                                     onClick={() => sendWhatsAppReceipt(order)}
                                     style={{
