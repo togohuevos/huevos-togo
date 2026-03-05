@@ -485,25 +485,27 @@ export default function Orders() {
                                         setIsClientListOpen(true);
                                     }}
                                     onBlur={() => {
-                                        // Delay closing to allow clicking on a result
-                                        setTimeout(() => setIsClientListOpen(false), 200);
+                                        // Delay so click on a list item fires first
+                                        setTimeout(() => setIsClientListOpen(false), 250);
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && isClientListOpen) {
-                                            const firstResult = clientes.filter(c => c.nombre_completo.toLowerCase().includes(clientSearchTerm.toLowerCase()))[0];
+                                            e.preventDefault();
+                                            const firstResult = clientes.filter(c =>
+                                                (c.nombre_completo || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase())
+                                            )[0];
                                             if (firstResult) {
                                                 setOrderData({ ...orderData, cliente_id: firstResult.id });
-                                                setClientSearchTerm(firstResult.nombre_completo);
+                                                setClientSearchTerm(firstResult.nombre_completo || '');
                                                 setIsClientListOpen(false);
-                                                e.preventDefault();
                                             }
                                         }
                                     }}
                                     onChange={e => {
-                                        setClientSearchTerm(e.target.value);
+                                        const val = e.target.value;
+                                        setClientSearchTerm(val);
                                         setIsClientListOpen(true);
-                                        // If the user clears the input, clear the selection
-                                        if (e.target.value === '') {
+                                        if (val === '') {
                                             setOrderData({ ...orderData, cliente_id: '' });
                                         }
                                     }}
@@ -535,10 +537,11 @@ export default function Orders() {
                                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)'
                                 }}>
                                     {clientes
-                                        .filter(c => c.nombre_completo.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+                                        .filter(c => (c.nombre_completo || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase()))
                                         .map(c => (
                                             <div
                                                 key={c.id}
+                                                onMouseDown={(e) => e.preventDefault()}
                                                 style={{
                                                     padding: '0.75rem',
                                                     cursor: 'pointer',
@@ -548,7 +551,7 @@ export default function Orders() {
                                                 }}
                                                 onClick={() => {
                                                     setOrderData({ ...orderData, cliente_id: c.id });
-                                                    setClientSearchTerm(c.nombre_completo);
+                                                    setClientSearchTerm(c.nombre_completo || '');
                                                     setIsClientListOpen(false);
                                                 }}
                                             >
@@ -556,7 +559,7 @@ export default function Orders() {
                                                 {orderData.cliente_id === c.id && <Check size={14} style={{ marginLeft: '8px' }} />}
                                             </div>
                                         ))}
-                                    {clientes.filter(c => c.nombre_completo.toLowerCase().includes(clientSearchTerm.toLowerCase())).length === 0 && (
+                                    {clientes.filter(c => (c.nombre_completo || '').toLowerCase().includes((clientSearchTerm || '').toLowerCase())).length === 0 && (
                                         <div style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No se encontraron resultados</div>
                                     )}
                                 </div>
