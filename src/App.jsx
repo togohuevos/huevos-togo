@@ -7,7 +7,7 @@ import Complaints from './pages/Complaints';
 import Accounting from './pages/Accounting';
 import Dashboard from './pages/Dashboard';
 import { useState, useEffect } from 'react';
-import { Users, ShoppingBag, MessageSquare, Calculator, LogOut, Home, X, Sun, Moon } from 'lucide-react';
+import { Users, ShoppingBag, MessageSquare, Calculator, LogOut, Home, X, Sun, Moon, RefreshCw } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
 function App() {
@@ -71,6 +71,16 @@ function App() {
             }}
           >
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            title="Refrescar"
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center'
+            }}
+          >
+            <RefreshCw size={20} />
           </button>
           <button
             onClick={() => supabase.auth.signOut()}
