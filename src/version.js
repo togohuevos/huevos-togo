@@ -15,6 +15,8 @@ export const CHANGELOG = [
             'Se agregó módulo de Inventario en Almacén en la pestaña Contable (stock por tipo, agregar panales, alerta de stock bajo).',
             'El inventario se descuenta automáticamente al crear un pedido y se restaura al borrarlo.',
             'Alerta roja en el Dashboard cuando algún tipo tiene menos de 5 panales en almacén.',
+            'Se agregó botón "– Quitar" en el inventario para descontar panales manualmente.',
+            'Se agregó opción "Fijar valor" en el inventario para establecer el stock real en cualquier momento.',
         ]
     },
     {
