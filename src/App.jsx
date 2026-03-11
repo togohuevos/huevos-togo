@@ -1,4 +1,5 @@
 import { useAuth } from './hooks/useAuth';
+import SplashScreen from './components/SplashScreen';
 import { useNotifications } from './hooks/useNotifications';
 import Login from './pages/Login';
 import Clients from './pages/Clients';
@@ -17,6 +18,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -28,6 +30,8 @@ function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+
+  if (showSplash) return <SplashScreen onFinish={() => setShowSplash(false)} />;
 
   if (loading) return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>Cargando...</div>;
 
