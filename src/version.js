@@ -11,6 +11,10 @@ export const CHANGELOG = [
             'Se agregó pantalla de bienvenida animada con el personaje de huevo y su bigote al abrir la app.',
             'Se agregó botón de estado de pago (Pagado / Pago Pendiente) en cada tarjeta de pedido.',
             'Los pedidos ahora se ordenan por fecha de registro (más reciente primero) con botón para invertir el orden.',
+            'Los pedidos muestran el día de la semana junto a la fecha de entrega (ej. lunes, martes).',
+            'Se agregó módulo de Inventario en Almacén en la pestaña Contable (stock por tipo, agregar panales, alerta de stock bajo).',
+            'El inventario se descuenta automáticamente al crear un pedido y se restaura al borrarlo.',
+            'Alerta roja en el Dashboard cuando algún tipo tiene menos de 5 panales en almacén.',
         ]
     },
     {

@@ -55,6 +55,7 @@ export default function Dashboard() {
     const [greeting, setGreeting] = useState('');
     const [loading, setLoading] = useState(true);
     const [autoWhatsApp, setAutoWhatsApp] = useState(localStorage.getItem('auto_whatsapp') === 'true');
+    const [inventario, setInventario] = useState({ A: 0, AA: 0, AAA: 0 });
 
     useEffect(() => {
         localStorage.setItem('auto_whatsapp', autoWhatsApp);
@@ -97,12 +98,20 @@ export default function Dashboard() {
             const [
                 { data: allOrders },
                 { data: allPrices },
-                { data: complaints }
+                { data: complaints },
+                { data: invData }
             ] = await Promise.all([
                 supabase.from('pedidos').select('*, clientes(nombre_completo)').gte('fecha_entrega', startDateStr),
                 supabase.from('precios_panales').select('*').gte('semana_inicio', startDateStr),
-                supabase.from('quejas').select('*, clientes(nombre_completo)').eq('resuelta', false)
+                supabase.from('quejas').select('*, clientes(nombre_completo)').eq('resuelta', false),
+                supabase.from('inventario').select('*')
             ]);
+
+            if (invData) {
+                const inv = { A: 0, AA: 0, AAA: 0 };
+                invData.forEach(r => { inv[r.tipo_huevo] = r.cantidad; });
+                setInventario(inv);
+            }
 
             if (!allOrders || !allPrices) {
                 setLoading(false);
@@ -250,6 +259,24 @@ export default function Dashboard() {
                     </p>
                 </div>
             </div>
+
+            {/* Low Stock Alert */}
+            {['A', 'AA', 'AAA'].some(t => inventario[t] < 5) && (
+                <div style={{
+                    marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: '0.75rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    display: 'flex', alignItems: 'flex-start', gap: '0.6rem'
+                }}>
+                    <span style={{ fontSize: '1.1rem' }}>🚨</span>
+                    <div>
+                        <p style={{ fontWeight: '700', color: '#ef4444', fontSize: '0.85rem' }}>Stock bajo en almacén</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>
+                            {['A', 'AA', 'AAA'].filter(t => inventario[t] < 5).map(t => `Tipo ${t}: ${inventario[t]} panales`).join(' · ')}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Configuration Card */}
             <div className="glass" style={{ padding: '1rem', borderRadius: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

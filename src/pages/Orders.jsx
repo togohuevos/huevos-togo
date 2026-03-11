@@ -76,7 +76,10 @@ export default function Orders() {
     const [reverseModal, setReverseModal] = useState({ show: false, id: null, clientName: '' });
 
     // Delete Modal State
-    const [deleteModal, setDeleteModal] = useState({ show: false, id: null, clientName: '' });
+    const [deleteModal, setDeleteModal] = useState({ show: false, id: null, clientName: '', tipo_huevo: '', cantidad: 0 });
+
+    // Track original order values before editing (for inventory adjustment)
+    const [editOriginal, setEditOriginal] = useState(null);
 
     const [prices, setPrices] = useState({});
 
@@ -175,7 +178,21 @@ export default function Orders() {
                 .select('*, clientes(*)');
 
             if (data) {
+                // Adjust inventory if tipo_huevo or cantidad changed
+                if (editOriginal) {
+                    const oldTipo = editOriginal.tipo_huevo;
+                    const oldCant = Number(editOriginal.cantidad);
+                    const newTipo = orderData.tipo_huevo;
+                    const newCant = Number(orderData.cantidad);
+                    // Restore old
+                    const { data: invOld } = await supabase.from('inventario').select('cantidad').eq('tipo_huevo', oldTipo).single();
+                    if (invOld) await supabase.from('inventario').update({ cantidad: invOld.cantidad + oldCant }).eq('tipo_huevo', oldTipo);
+                    // Decrement new
+                    const { data: invNew } = await supabase.from('inventario').select('cantidad').eq('tipo_huevo', newTipo).single();
+                    if (invNew) await supabase.from('inventario').update({ cantidad: Math.max(0, invNew.cantidad - newCant) }).eq('tipo_huevo', newTipo);
+                }
                 setOrders(orders.map(o => o.id === data[0].id ? data[0] : o));
+                setEditOriginal(null);
                 resetForm();
             }
         } else {
@@ -184,6 +201,9 @@ export default function Orders() {
                 .insert([orderData])
                 .select('*, clientes(*)');
             if (data) {
+                // Decrement inventory
+                const { data: inv } = await supabase.from('inventario').select('cantidad').eq('tipo_huevo', orderData.tipo_huevo).single();
+                if (inv) await supabase.from('inventario').update({ cantidad: Math.max(0, inv.cantidad - Number(orderData.cantidad)) }).eq('tipo_huevo', orderData.tipo_huevo);
                 setOrders([data[0], ...orders]);
                 resetForm();
             }
@@ -215,6 +235,7 @@ export default function Orders() {
     };
 
     const startEdit = (order) => {
+        setEditOriginal({ tipo_huevo: order.tipo_huevo, cantidad: order.cantidad });
         setOrderData({
             id: order.id,
             cliente_id: order.cliente_id,
@@ -237,8 +258,12 @@ export default function Orders() {
             .eq('id', deleteModal.id);
 
         if (!error) {
+            // Restore inventory
+            const { data: inv } = await supabase.from('inventario').select('cantidad').eq('tipo_huevo', deleteModal.tipo_huevo).single();
+            if (inv) await supabase.from('inventario').update({ cantidad: inv.cantidad + Number(deleteModal.cantidad) }).eq('tipo_huevo', deleteModal.tipo_huevo);
+
             setOrders(orders.filter(o => o.id !== deleteModal.id));
-            setDeleteModal({ show: false, id: null, clientName: '' });
+            setDeleteModal({ show: false, id: null, clientName: '', tipo_huevo: '', cantidad: 0 });
         } else {
             alert('Error al eliminar el pedido');
         }
@@ -644,7 +669,7 @@ export default function Orders() {
                             <button
                                 className="btn"
                                 style={{ flex: 1, backgroundColor: 'var(--danger)' }}
-                                onClick={() => setDeleteModal({ show: false, id: null, clientName: '' })}
+                                onClick={() => setDeleteModal({ show: false, id: null, clientName: '', tipo_huevo: '', cantidad: 0 })}
                             >
                                 No
                             </button>
@@ -673,7 +698,7 @@ export default function Orders() {
                                     <Pencil size={16} />
                                 </button>
                                 <button
-                                    onClick={() => setDeleteModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo })}
+                                    onClick={() => setDeleteModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo, tipo_huevo: order.tipo_huevo, cantidad: order.cantidad })}
                                     style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
                                 >
                                     <Trash2 size={16} />
@@ -757,7 +782,15 @@ export default function Orders() {
 
                         <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                                <Calendar size={14} /> {order.fecha_entrega}
+                                <Calendar size={14} />
+                                <span>
+                                    {order.fecha_entrega}
+                                    {order.fecha_entrega && (
+                                        <span style={{ marginLeft: '0.35rem', color: 'var(--primary)', fontWeight: '600', textTransform: 'capitalize' }}>
+                                            · {new Date(order.fecha_entrega + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long' })}
+                                        </span>
+                                    )}
+                                </span>
                             </div>
                             {order.estado === 'Pending' && (
                                 <button
