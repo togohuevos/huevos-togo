@@ -65,6 +65,7 @@ export default function Accounting() {
     const [inventario, setInventario] = useState({ A: 0, AA: 0, AAA: 0 });
     const [stockAction, setStockAction] = useState(null); // { tipo, mode: 'add'|'remove'|'set' } | null
     const [stockInput, setStockInput] = useState('');
+    const [inventarioView, setInventarioView] = useState('todos'); // 'todos' | 'entregados'
 
     const { monday, sunday } = getWeekRange(weekOffset);
     const mondayStr = toLocalDateStr(monday);
@@ -260,11 +261,18 @@ export default function Accounting() {
 
     // ─── Inventory disponible (dynamic) ──────────────────
     const allOrderTotals = calc(allOrders);
-    const disponible = {
+    const allDeliveredTotals = calc(allOrders.filter(o => o.estado === 'Delivered'));
+    const disponibleTodos = {
         A: inventario.A - allOrderTotals.A,
         AA: inventario.AA - allOrderTotals.AA,
         AAA: inventario.AAA - allOrderTotals.AAA,
     };
+    const disponibleEntregados = {
+        A: inventario.A - allDeliveredTotals.A,
+        AA: inventario.AA - allDeliveredTotals.AA,
+        AAA: inventario.AAA - allDeliveredTotals.AAA,
+    };
+    const disponible = inventarioView === 'todos' ? disponibleTodos : disponibleEntregados;
 
     // Bar chart max
     const maxBar = Math.max(allTotals.A, allTotals.AA, allTotals.AAA, 1);
@@ -331,9 +339,24 @@ export default function Accounting() {
 
             {/* ── Inventory ─────────────────────── */}
             <div className="glass" style={{ padding: '1rem', borderRadius: '1rem', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Package size={18} style={{ color: 'var(--primary)' }} /> 📦 Inventario
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <h2 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                        <Package size={18} style={{ color: 'var(--primary)' }} /> 📦 Inventario
+                    </h2>
+                    <button
+                        onClick={() => setInventarioView(v => v === 'todos' ? 'entregados' : 'todos')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                            fontSize: '0.65rem', fontWeight: '700',
+                            backgroundColor: inventarioView === 'todos' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)',
+                            color: inventarioView === 'todos' ? '#818cf8' : '#10b981',
+                            transition: 'all 0.25s'
+                        }}
+                    >
+                        {inventarioView === 'todos' ? '📦 Con pedidos' : '🏠 Solo entregados'}
+                    </button>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                     {['A', 'AA', 'AAA'].map(tipo => {
                         const disp = disponible[tipo];
