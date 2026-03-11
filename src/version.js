@@ -1,9 +1,17 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.1';
+export const APP_VERSION = '1.2';
 
 export const CHANGELOG = [
+    {
+        version: '1.2',
+        date: '10 de marzo de 2025',
+        changes: [
+            'Se agregó pantalla de bienvenida animada con el personaje de huevo y su bigote al abrir la app.',
+            'Se agregó botón de estado de pago (Pagado / Pago Pendiente) en cada tarjeta de pedido.',
+        ]
+    },
     {
         version: '1.1',
         date: '5 de marzo de 2025',
