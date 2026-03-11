@@ -259,15 +259,11 @@ export default function Accounting() {
     }
 
     // ─── Inventory disponible (dynamic) ──────────────────
-    const curWeekRange = getWeekRange(0);
-    const curMonStr = toLocalDateStr(curWeekRange.monday);
-    const curSunStr = toLocalDateStr(curWeekRange.sunday);
-    const curWeekOrders = allOrders.filter(o => o.fecha_entrega >= curMonStr && o.fecha_entrega <= curSunStr);
-    const curWeekTotals = calc(curWeekOrders);
+    const allOrderTotals = calc(allOrders);
     const disponible = {
-        A: inventario.A - curWeekTotals.A,
-        AA: inventario.AA - curWeekTotals.AA,
-        AAA: inventario.AAA - curWeekTotals.AAA,
+        A: inventario.A - allOrderTotals.A,
+        AA: inventario.AA - allOrderTotals.AA,
+        AAA: inventario.AAA - allOrderTotals.AAA,
     };
 
     // Bar chart max
