@@ -13,25 +13,6 @@ function EggWithMustache() {
       {/* Egg body */}
       <ellipse cx="60" cy="76" rx="46" ry="58" fill="#FEFEFE" stroke="#e8e0d0" strokeWidth="1.5" />
 
-      {/* Eyes */}
-      <ellipse cx="45" cy="62" rx="7" ry="8" fill="white" stroke="#333" strokeWidth="1.2" />
-      <ellipse cx="75" cy="62" rx="7" ry="8" fill="white" stroke="#333" strokeWidth="1.2" />
-      <circle cx="46" cy="63" r="4" fill="#222" />
-      <circle cx="76" cy="63" r="4" fill="#222" />
-      {/* Eye shine */}
-      <circle cx="48" cy="61" r="1.5" fill="white" />
-      <circle cx="78" cy="61" r="1.5" fill="white" />
-
-      {/* Eyebrows (slightly furrowed like the logo) */}
-      <path d="M38 54 Q45 50 52 53" stroke="#333" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <path d="M68 53 Q75 50 82 54" stroke="#333" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-
-      {/* Nose hint */}
-      <ellipse cx="60" cy="76" rx="4" ry="2.5" fill="rgba(0,0,0,0.07)" />
-
-      {/* Smile */}
-      <path d="M50 85 Q60 92 70 85" stroke="#ccc" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-
       {/* HANDLEBAR MUSTACHE — thick, curly, black, cowboy style */}
       <path
         d="
