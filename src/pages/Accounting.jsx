@@ -258,6 +258,18 @@ export default function Accounting() {
         if (diffs.length > 0) alerts.push(`⚠️ Los precios de esta semana son diferentes a los de la semana actual (${diffs.map(t => `Tipo ${t}`).join(', ')}).`);
     }
 
+    // ─── Inventory disponible (dynamic) ──────────────────
+    const curWeekRange = getWeekRange(0);
+    const curMonStr = toLocalDateStr(curWeekRange.monday);
+    const curSunStr = toLocalDateStr(curWeekRange.sunday);
+    const curWeekOrders = allOrders.filter(o => o.fecha_entrega >= curMonStr && o.fecha_entrega <= curSunStr);
+    const curWeekTotals = calc(curWeekOrders);
+    const disponible = {
+        A: inventario.A - curWeekTotals.A,
+        AA: inventario.AA - curWeekTotals.AA,
+        AAA: inventario.AAA - curWeekTotals.AAA,
+    };
+
     // Bar chart max
     const maxBar = Math.max(allTotals.A, allTotals.AA, allTotals.AAA, 1);
 
@@ -323,62 +335,56 @@ export default function Accounting() {
 
             {/* ── Inventory ─────────────────────── */}
             <div className="glass" style={{ padding: '1rem', borderRadius: '1rem', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <h2 style={{ fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <Package size={18} style={{ color: 'var(--primary)' }} /> 📦 Inventario en Almacén
                 </h2>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
-                    ℹ️ Ingresa el stock físico que tienes hoy. Pedidos nuevos lo descuentan automáticamente.
-                    Usa <strong>"– Quitar"</strong> para correcciones o <strong>"Fijar"</strong> para establecer el valor exacto.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                     {['A', 'AA', 'AAA'].map(tipo => {
-                        const qty = inventario[tipo];
-                        const color = qty <= 0 ? '#ef4444' : qty < 5 ? '#f59e0b' : '#10b981';
-                        const bg = qty <= 0 ? 'rgba(239,68,68,0.1)' : qty < 5 ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)';
+                        const disp = disponible[tipo];
+                        const color = disp < 0 ? '#ef4444' : disp < 5 ? '#f59e0b' : '#10b981';
+                        const bg = disp < 0 ? 'rgba(239,68,68,0.08)' : disp < 5 ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)';
                         const isActive = stockAction?.tipo === tipo;
                         return (
-                            <div key={tipo} style={{ background: bg, borderRadius: '0.75rem', padding: '0.75rem', textAlign: 'center', border: `1px solid ${color}33` }}>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Tipo {tipo}</p>
-                                <p style={{ fontSize: '1.8rem', fontWeight: '800', color, lineHeight: 1 }}>{qty}</p>
-                                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>panales</p>
-                                {qty < 5 && <p style={{ fontSize: '0.65rem', color: '#f59e0b', marginTop: '2px' }}>⚠️ Stock bajo</p>}
+                            <div key={tipo} style={{ background: bg, borderRadius: '0.75rem', padding: '0.75rem 1rem', border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {/* Left: label + count */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                                    <div style={{ background: `${color}22`, borderRadius: '8px', padding: '4px 10px', textAlign: 'center', minWidth: '44px' }}>
+                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: 1 }}>Tipo</p>
+                                        <p style={{ fontSize: '1rem', fontWeight: '800', color, lineHeight: 1.2 }}>{tipo}</p>
+                                    </div>
+                                    <div>
+                                        <p style={{ fontSize: '1.5rem', fontWeight: '800', color, lineHeight: 1 }}>{disp}</p>
+                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>panales disponibles{disp < 0 ? ' ⚠️' : ''}</p>
+                                    </div>
+                                </div>
 
+                                {/* Right: buttons or input */}
                                 {isActive ? (
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '3px' }}>
-                                            {stockAction.mode === 'add' ? '+ Agregar' : stockAction.mode === 'remove' ? '– Quitar' : '📝 Fijar valor'}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginRight: '2px' }}>
+                                            {stockAction.mode === 'add' ? '+' : stockAction.mode === 'remove' ? '–' : '='}
                                         </p>
-                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                            <input
-                                                type="number" min="0"
-                                                value={stockInput}
-                                                onChange={e => setStockInput(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && applyStock()}
-                                                placeholder={stockAction.mode === 'set' ? qty : '0'}
-                                                style={{ width: '100%', padding: '4px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '0.8rem', textAlign: 'center' }}
-                                                autoFocus
-                                            />
-                                            <button onClick={applyStock} style={{ background: '#10b981', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', padding: '4px 8px', fontSize: '0.75rem' }}>✓</button>
-                                            <button onClick={() => { setStockAction(null); setStockInput(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 6px', fontSize: '0.75rem' }}>✕</button>
-                                        </div>
+                                        <input
+                                            type="number" min="0"
+                                            value={stockInput}
+                                            onChange={e => setStockInput(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && applyStock()}
+                                            style={{ width: '70px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '0.85rem', textAlign: 'center' }}
+                                            autoFocus
+                                        />
+                                        <button onClick={applyStock} style={{ background: '#10b981', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', padding: '6px 10px', fontSize: '0.8rem', fontWeight: '700' }}>✓</button>
+                                        <button onClick={() => { setStockAction(null); setStockInput(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px 8px', fontSize: '0.8rem' }}>✕</button>
                                     </div>
                                 ) : (
-                                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                            <button
-                                                onClick={() => { setStockAction({ tipo, mode: 'add' }); setStockInput(''); }}
-                                                style={{ flex: 1, background: 'rgba(16,185,129,0.15)', border: 'none', borderRadius: '6px', color: '#10b981', cursor: 'pointer', padding: '4px 4px', fontSize: '0.7rem', fontWeight: '700' }}
-                                            >+ Agregar</button>
-                                            <button
-                                                onClick={() => { setStockAction({ tipo, mode: 'remove' }); setStockInput(''); }}
-                                                style={{ flex: 1, background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', padding: '4px 4px', fontSize: '0.7rem', fontWeight: '700' }}
-                                            >– Quitar</button>
-                                        </div>
+                                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                                         <button
-                                            onClick={() => { setStockAction({ tipo, mode: 'set' }); setStockInput(qty); }}
-                                            style={{ background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '6px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', fontSize: '0.65rem', fontWeight: '600', width: '100%' }}
-                                        >📝 Fijar valor
-                                        </button>
+                                            onClick={() => { setStockAction({ tipo, mode: 'add' }); setStockInput(''); }}
+                                            style={{ background: 'rgba(16,185,129,0.15)', border: 'none', borderRadius: '8px', color: '#10b981', cursor: 'pointer', padding: '6px 10px', fontSize: '0.75rem', fontWeight: '700' }}
+                                        >+ Agregar</button>
+                                        <button
+                                            onClick={() => { setStockAction({ tipo, mode: 'remove' }); setStockInput(''); }}
+                                            style={{ background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px 10px', fontSize: '0.75rem', fontWeight: '700' }}
+                                        >– Quitar</button>
                                     </div>
                                 )}
                             </div>

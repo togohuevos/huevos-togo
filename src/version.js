@@ -17,6 +17,8 @@ export const CHANGELOG = [
             'Alerta roja en el Dashboard cuando algún tipo tiene menos de 5 panales en almacén.',
             'Se agregó botón "– Quitar" en el inventario para descontar panales manualmente.',
             'Se agregó opción "Fijar valor" en el inventario para establecer el stock real en cualquier momento.',
+            'Inventario rediseñado: ahora descuenta automáticamente los pedidos de la semana actual (incluidos los ya existentes). Permite negativos si los pedidos superan el stock.',
+            'UI del inventario mejorada con filas horizontales para mejor visualización en móvil.',
         ]
     },
     {
