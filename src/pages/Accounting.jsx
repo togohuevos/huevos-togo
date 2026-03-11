@@ -332,54 +332,49 @@ export default function Accounting() {
             {/* ── Inventory ─────────────────────── */}
             <div className="glass" style={{ padding: '1rem', borderRadius: '1rem', marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Package size={18} style={{ color: 'var(--primary)' }} /> 📦 Inventario en Almacén
+                    <Package size={18} style={{ color: 'var(--primary)' }} /> 📦 Inventario
                 </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                     {['A', 'AA', 'AAA'].map(tipo => {
                         const disp = disponible[tipo];
-                        const color = disp < 0 ? '#ef4444' : disp < 5 ? '#f59e0b' : '#10b981';
-                        const bg = disp < 0 ? 'rgba(239,68,68,0.08)' : disp < 5 ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)';
+                        const color = disp <= 0 ? '#ef4444' : disp < 5 ? '#f59e0b' : '#10b981';
+                        const bg = disp <= 0 ? 'rgba(239,68,68,0.12)' : disp < 5 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)';
                         const isActive = stockAction?.tipo === tipo;
                         return (
-                            <div key={tipo} style={{ background: bg, borderRadius: '0.75rem', padding: '0.75rem 1rem', border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {/* Left: label + count */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-                                    <div style={{ background: `${color}22`, borderRadius: '8px', padding: '4px 10px', textAlign: 'center', minWidth: '44px' }}>
-                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: 1 }}>Tipo</p>
-                                        <p style={{ fontSize: '1rem', fontWeight: '800', color, lineHeight: 1.2 }}>{tipo}</p>
-                                    </div>
-                                    <div>
-                                        <p style={{ fontSize: '1.5rem', fontWeight: '800', color, lineHeight: 1 }}>{disp}</p>
-                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>panales disponibles{disp < 0 ? ' ⚠️' : ''}</p>
-                                    </div>
-                                </div>
-
-                                {/* Right: buttons or input */}
+                            <div key={tipo} style={{ background: bg, borderRadius: '0.75rem', padding: '0.6rem 0.5rem', textAlign: 'center', border: `1px solid ${color}44`, transition: 'all 0.2s' }}>
+                                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Tipo {tipo}</p>
+                                <p style={{ fontSize: '1.6rem', fontWeight: '800', color, lineHeight: 1 }}>{disp}</p>
+                                <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: disp < 5 ? '2px' : '6px' }}>panales</p>
+                                {disp < 5 && (
+                                    <p style={{ fontSize: '0.6rem', color, fontWeight: '700', marginBottom: '6px' }}>
+                                        {disp <= 0 ? '🔴 Sin stock' : '⚠️ Stock bajo'}
+                                    </p>
+                                )}
                                 {isActive ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginRight: '2px' }}>
-                                            {stockAction.mode === 'add' ? '+' : stockAction.mode === 'remove' ? '–' : '='}
-                                        </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                                         <input
                                             type="number" min="0"
                                             value={stockInput}
                                             onChange={e => setStockInput(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && applyStock()}
-                                            style={{ width: '70px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '0.85rem', textAlign: 'center' }}
+                                            placeholder="0"
+                                            style={{ width: '100%', padding: '4px', borderRadius: '6px', border: `1px solid ${color}66`, background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '0.85rem', textAlign: 'center', boxSizing: 'border-box' }}
                                             autoFocus
                                         />
-                                        <button onClick={applyStock} style={{ background: '#10b981', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', padding: '6px 10px', fontSize: '0.8rem', fontWeight: '700' }}>✓</button>
-                                        <button onClick={() => { setStockAction(null); setStockInput(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px 8px', fontSize: '0.8rem' }}>✕</button>
+                                        <div style={{ display: 'flex', gap: '3px' }}>
+                                            <button onClick={applyStock} style={{ flex: 1, background: '#10b981', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', padding: '4px', fontSize: '0.75rem', fontWeight: '700' }}>✓</button>
+                                            <button onClick={() => { setStockAction(null); setStockInput(''); }} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', fontSize: '0.75rem' }}>✕</button>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                         <button
                                             onClick={() => { setStockAction({ tipo, mode: 'add' }); setStockInput(''); }}
-                                            style={{ background: 'rgba(16,185,129,0.15)', border: 'none', borderRadius: '8px', color: '#10b981', cursor: 'pointer', padding: '6px 10px', fontSize: '0.75rem', fontWeight: '700' }}
+                                            style={{ width: '100%', background: 'rgba(16,185,129,0.18)', border: 'none', borderRadius: '6px', color: '#10b981', cursor: 'pointer', padding: '4px', fontSize: '0.7rem', fontWeight: '700' }}
                                         >+ Agregar</button>
                                         <button
                                             onClick={() => { setStockAction({ tipo, mode: 'remove' }); setStockInput(''); }}
-                                            style={{ background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', padding: '6px 10px', fontSize: '0.75rem', fontWeight: '700' }}
+                                            style={{ width: '100%', background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', padding: '4px', fontSize: '0.7rem', fontWeight: '700' }}
                                         >– Quitar</button>
                                     </div>
                                 )}
@@ -420,6 +415,7 @@ export default function Accounting() {
                     <ChevronRight size={24} />
                 </button>
             </div>
+
 
             {/* ── Summary Cards ──────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -693,21 +689,23 @@ export default function Accounting() {
             </div>
 
             {/* ── Delete Gasto Modal ─────────────── */}
-            {deleteGastoModal.show && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, padding: '2rem'
-                }}>
-                    <div className="glass" style={{ padding: '2rem', borderRadius: '1.5rem', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
-                        <h3 style={{ marginBottom: '1rem' }}>¿Eliminar este gasto?</h3>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn" style={{ flex: 1, backgroundColor: 'var(--accent)' }} onClick={confirmDeleteGasto}>Sí</button>
-                            <button className="btn" style={{ flex: 1, backgroundColor: 'var(--danger)' }} onClick={() => setDeleteGastoModal({ show: false, id: null })}>No</button>
+            {
+                deleteGastoModal.show && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1000, padding: '2rem'
+                    }}>
+                        <div className="glass" style={{ padding: '2rem', borderRadius: '1.5rem', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+                            <h3 style={{ marginBottom: '1rem' }}>¿Eliminar este gasto?</h3>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button className="btn" style={{ flex: 1, backgroundColor: 'var(--accent)' }} onClick={confirmDeleteGasto}>Sí</button>
+                                <button className="btn" style={{ flex: 1, backgroundColor: 'var(--danger)' }} onClick={() => setDeleteGastoModal({ show: false, id: null })}>No</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
