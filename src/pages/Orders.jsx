@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShoppingBag, Plus, Calendar, CheckCircle, Clock, MapPin, Pencil, Trash2, ChevronLeft, ChevronRight, Navigation, Check, MessageSquare } from 'lucide-react';
+import { ShoppingBag, Plus, Calendar, CheckCircle, Clock, MapPin, Pencil, Trash2, ChevronLeft, ChevronRight, Navigation, Check, MessageSquare, DollarSign } from 'lucide-react';
 
 // User color mapping
 const USER_COLORS = {
@@ -49,7 +49,8 @@ export default function Orders() {
         tipo_huevo: 'A',
         cantidad: 1,
         metodo_pago: 'Efectivo',
-        fecha_entrega: toLocalDateStr(new Date())
+        fecha_entrega: toLocalDateStr(new Date()),
+        pago_estado: 'Pendiente'
     });
 
     // Week filter state
@@ -161,7 +162,8 @@ export default function Orders() {
                 tipo_huevo: orderData.tipo_huevo,
                 cantidad: orderData.cantidad,
                 metodo_pago: orderData.metodo_pago,
-                fecha_entrega: orderData.fecha_entrega
+                fecha_entrega: orderData.fecha_entrega,
+                pago_estado: orderData.pago_estado
             };
             const { data, error } = await supabase
                 .from('pedidos')
@@ -185,6 +187,16 @@ export default function Orders() {
         }
     };
 
+    const updatePaymentStatus = async (id, nuevoEstado) => {
+        const { error } = await supabase
+            .from('pedidos')
+            .update({ pago_estado: nuevoEstado })
+            .eq('id', id);
+        if (!error) {
+            setOrders(orders.map(o => o.id === id ? { ...o, pago_estado: nuevoEstado } : o));
+        }
+    };
+
     const resetForm = () => {
         setShowForm(false);
         setIsEditing(false);
@@ -193,7 +205,8 @@ export default function Orders() {
             tipo_huevo: 'A',
             cantidad: 1,
             metodo_pago: 'Efectivo',
-            fecha_entrega: toLocalDateStr(new Date())
+            fecha_entrega: toLocalDateStr(new Date()),
+            pago_estado: 'Pendiente'
         });
         setClientSearchTerm('');
     };
@@ -205,7 +218,8 @@ export default function Orders() {
             tipo_huevo: order.tipo_huevo,
             cantidad: order.cantidad,
             metodo_pago: order.metodo_pago,
-            fecha_entrega: order.fecha_entrega
+            fecha_entrega: order.fecha_entrega,
+            pago_estado: order.pago_estado || 'Pendiente'
         });
         setClientSearchTerm(order.clientes?.nombre_completo || '');
         setIsEditing(true);
@@ -682,6 +696,35 @@ export default function Orders() {
                                 {(order.clientes?.unidad_apto || order.clientes?.numero_casa) && ' - '}
                                 {order.clientes?.unidad_apto} {order.clientes?.numero_casa && `(${order.clientes?.numero_casa})`}
                             </span>
+                        </div>
+
+                        {/* Payment Status Toggle */}
+                        <div style={{ marginTop: '0.75rem' }}>
+                            <button
+                                onClick={() => updatePaymentStatus(
+                                    order.id,
+                                    (order.pago_estado || 'Pendiente') === 'Pagado' ? 'Pendiente' : 'Pagado'
+                                )}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                    padding: '5px 12px', borderRadius: '999px', border: 'none',
+                                    cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700',
+                                    transition: 'all 0.2s ease',
+                                    backgroundColor: (order.pago_estado || 'Pendiente') === 'Pagado'
+                                        ? 'rgba(16, 185, 129, 0.15)'
+                                        : 'rgba(245, 158, 11, 0.15)',
+                                    color: (order.pago_estado || 'Pendiente') === 'Pagado'
+                                        ? '#10b981'
+                                        : '#f59e0b',
+                                    border: `1px solid ${(order.pago_estado || 'Pendiente') === 'Pagado'
+                                            ? 'rgba(16,185,129,0.4)'
+                                            : 'rgba(245,158,11,0.4)'
+                                        }`
+                                }}
+                            >
+                                <DollarSign size={13} />
+                                {(order.pago_estado || 'Pendiente') === 'Pagado' ? '✅ Pagado' : '⏳ Pago Pendiente'}
+                            </button>
                         </div>
 
                         <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
