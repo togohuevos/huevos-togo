@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShoppingBag, Plus, Calendar, CheckCircle, Clock, MapPin, Pencil, Trash2, ChevronLeft, ChevronRight, Navigation, Check, MessageSquare, DollarSign } from 'lucide-react';
+import { ShoppingBag, Plus, Calendar, CheckCircle, Clock, MapPin, Pencil, Trash2, ChevronLeft, ChevronRight, Navigation, Check, MessageSquare, DollarSign, ArrowUpDown } from 'lucide-react';
 
 // User color mapping
 const USER_COLORS = {
@@ -56,6 +56,9 @@ export default function Orders() {
     // Week filter state
     const [viewMode, setViewMode] = useState('all'); // 'all', 'week', or 'route'
     const [weekOffset, setWeekOffset] = useState(0);
+
+    // Sort order state: 'desc' = más reciente primero, 'asc' = más viejo primero
+    const [sortOrder, setSortOrder] = useState('desc');
 
     // GPS location state for route
     const [userLocation, setUserLocation] = useState(null);
@@ -143,7 +146,7 @@ export default function Orders() {
         const { data } = await supabase
             .from('pedidos')
             .select('*, clientes(*)')
-            .order('fecha_entrega', { ascending: false });
+            .order('created_at', { ascending: false });
         if (data) setOrders(data);
         setLoading(false);
     };
@@ -297,9 +300,16 @@ export default function Orders() {
     const { monday, sunday } = getWeekRange(weekOffset);
     const mondayStr = toLocalDateStr(monday);
     const sundayStr = toLocalDateStr(sunday);
-    const filteredOrders = viewMode === 'week'
+    const baseFiltered = viewMode === 'week'
         ? orders.filter(o => o.fecha_entrega >= mondayStr && o.fecha_entrega <= sundayStr)
         : orders;
+
+    // Sort by created_at
+    const filteredOrders = [...baseFiltered].sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
 
     const weekLabel = weekOffset === 0 ? 'Esta Semana' : weekOffset === 1 ? 'Próxima Semana' : weekOffset === -1 ? 'Semana Pasada' : `Semana del ${formatWeekDate(monday)}`;
 
@@ -307,9 +317,27 @@ export default function Orders() {
         <div style={{ padding: '1rem', paddingBottom: '5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Pedidos</h1>
-                <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-                    <Plus size={20} /> Nuevo
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {viewMode !== 'route' && (
+                        <button
+                            onClick={() => setSortOrder(s => s === 'desc' ? 'asc' : 'desc')}
+                            title={sortOrder === 'desc' ? 'Más reciente primero' : 'Más viejo primero'}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                padding: '8px 10px', borderRadius: '8px', border: 'none',
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                color: 'var(--text-muted)', cursor: 'pointer',
+                                fontSize: '0.75rem', fontWeight: '600'
+                            }}
+                        >
+                            <ArrowUpDown size={15} />
+                            {sortOrder === 'desc' ? 'Reciente' : 'Antiguo'}
+                        </button>
+                    )}
+                    <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+                        <Plus size={20} /> Nuevo
+                    </button>
+                </div>
             </div>
 
             {/* View Mode Toggle */}
@@ -717,8 +745,8 @@ export default function Orders() {
                                         ? '#10b981'
                                         : '#f59e0b',
                                     border: `1px solid ${(order.pago_estado || 'Pendiente') === 'Pagado'
-                                            ? 'rgba(16,185,129,0.4)'
-                                            : 'rgba(245,158,11,0.4)'
+                                        ? 'rgba(16,185,129,0.4)'
+                                        : 'rgba(245,158,11,0.4)'
                                         }`
                                 }}
                             >

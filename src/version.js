@@ -10,6 +10,7 @@ export const CHANGELOG = [
         changes: [
             'Se agregó pantalla de bienvenida animada con el personaje de huevo y su bigote al abrir la app.',
             'Se agregó botón de estado de pago (Pagado / Pago Pendiente) en cada tarjeta de pedido.',
+            'Los pedidos ahora se ordenan por fecha de registro (más reciente primero) con botón para invertir el orden.',
         ]
     },
     {
