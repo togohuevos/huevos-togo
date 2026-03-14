@@ -798,6 +798,87 @@ export default function Orders() {
                 </div>
             )}
 
+            {/* Orders List by Groups (Only if NOT in Route Mode) */}
+            {viewMode !== 'route' && (
+                <div style={{ marginTop: '1rem' }}>
+                    {/* Group 1: Por Entregar */}
+                    {porEntregar.length > 0 && (
+                        <div style={{ marginBottom: '2rem' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem',
+                                borderBottom: '2px solid rgba(96, 165, 250, 0.3)', paddingBottom: '0.5rem'
+                            }}>
+                                <Clock size={20} style={{ color: 'var(--primary)' }} />
+                                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    Por Entregar
+                                </h2>
+                                <span style={{
+                                    marginLeft: 'auto', backgroundColor: 'var(--primary)', color: 'white',
+                                    padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
+                                }}>
+                                    {porEntregar.length}
+                                </span>
+                            </div>
+                            {porEntregar.map(order => renderOrderCard(order))}
+                        </div>
+                    )}
+
+                    {/* Group 2: Por Cobrar (Deudores) */}
+                    {deudores.length > 0 && (
+                        <div style={{ marginBottom: '2rem' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem',
+                                borderBottom: '2px solid rgba(245, 158, 11, 0.3)', paddingBottom: '0.5rem'
+                            }}>
+                                <DollarSign size={20} style={{ color: '#f59e0b' }} />
+                                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: '#f59e0b' }}>
+                                    ⚠️ Por Cobrar
+                                </h2>
+                                <span style={{
+                                    marginLeft: 'auto', backgroundColor: '#f59e0b', color: 'white',
+                                    padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
+                                }}>
+                                    {deudores.length}
+                                </span>
+                            </div>
+                            {deudores.map(order => renderOrderCard(order))}
+                        </div>
+                    )}
+
+                    {/* Group 3: Completados */}
+                    {completados.length > 0 && (
+                        <div style={{ marginBottom: '2rem' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem',
+                                borderBottom: '2px solid rgba(16, 185, 129, 0.3)', paddingBottom: '0.5rem'
+                            }}>
+                                <CheckCircle size={20} style={{ color: '#10b981' }} />
+                                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: '#10b981' }}>
+                                    ✅ Completados
+                                </h2>
+                                <span style={{
+                                    marginLeft: 'auto', backgroundColor: '#10b981', color: 'white',
+                                    padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
+                                }}>
+                                    {completados.length}
+                                </span>
+                            </div>
+                            {completados.map(order => renderOrderCard(order))}
+                        </div>
+                    )}
+
+                    {porEntregar.length === 0 && deudores.length === 0 && completados.length === 0 && (
+                        <div className="glass" style={{ padding: '3rem 1rem', textAlign: 'center', borderRadius: '1rem' }}>
+                            <ShoppingBag size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.3 }} />
+                            <p style={{ color: 'var(--text-muted)' }}>No hay pedidos en esta vista</p>
+                            <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => setShowForm(true)}>
+                                Crear Primer Pedido
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Reverse Confirmation Modal */}
             {reverseModal.show && (
                 <div style={{
@@ -860,8 +941,6 @@ export default function Orders() {
                     </div>
                 </div>
             )}
-
-
         </div>
     );
 }
