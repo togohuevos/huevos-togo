@@ -1,7 +1,7 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3';
+export const APP_VERSION = '1.3.1';
 
 export const CHANGELOG = [
     {

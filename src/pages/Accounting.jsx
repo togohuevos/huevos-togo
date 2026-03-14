@@ -222,10 +222,17 @@ export default function Accounting() {
     const allTotals = calc(orders);
     const totalPanales = allTotals.A + allTotals.AA + allTotals.AAA;
 
+    // Financial calculations
     const investmentCost = ['A', 'AA', 'AAA'].reduce((s, t) => s + allTotals[t] * prices[t].compra, 0);
     const expectedIncome = ['A', 'AA', 'AAA'].reduce((s, t) => s + allTotals[t] * prices[t].venta, 0);
-    const collectedIncome = ['A', 'AA', 'AAA'].reduce((s, t) => s + deliveredTotals[t] * prices[t].venta, 0);
-    const pendingIncome = ['A', 'AA', 'AAA'].reduce((s, t) => s + pendingTotals[t] * prices[t].venta, 0);
+    
+    // Exact payment tracking using pago_estado
+    const paidOrders = orders.filter(o => o.pago_estado === 'Pagado');
+    const unpaidOrders = orders.filter(o => o.pago_estado === 'Pendiente');
+    
+    const collectedIncome = paidOrders.reduce((s, o) => s + (Number(o.cantidad) * (prices[o.tipo_huevo]?.venta || 0)), 0);
+    const pendingIncome = unpaidOrders.reduce((s, o) => s + (Number(o.cantidad) * (prices[o.tipo_huevo]?.venta || 0)), 0);
+    
     const totalGastos = gastos.reduce((s, g) => s + Number(g.monto), 0);
     const profit = expectedIncome - investmentCost - totalGastos;
 
@@ -437,6 +444,25 @@ export default function Accounting() {
                 <button onClick={() => setWeekOffset(weekOffset + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.5rem' }}>
                     <ChevronRight size={24} />
                 </button>
+            </div>
+
+            {/* ── Payment Summary Board ────────────── */}
+            <div className="glass" style={{ padding: '1.25rem', borderRadius: '1.25rem', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <h2 style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <DollarSign size={18} style={{ color: 'var(--primary)' }} /> Control de Caja {weekLabel === 'Esta Semana' ? 'Hoy' : ''}
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '1rem', padding: '1rem', textAlign: 'center' }}>
+                        <p style={{ color: '#10b981', fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>Recaudado</p>
+                        <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#10b981' }}>{formatCurrency(collectedIncome)}</p>
+                        <p style={{ fontSize: '0.65rem', color: 'rgba(16, 185, 129, 0.7)', marginTop: '2px' }}>{paidOrders.length} pedidos pagos</p>
+                    </div>
+                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '1rem', padding: '1rem', textAlign: 'center' }}>
+                        <p style={{ color: '#f59e0b', fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>Pendiente</p>
+                        <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#f59e0b' }}>{formatCurrency(pendingIncome)}</p>
+                        <p style={{ fontSize: '0.65rem', color: 'rgba(245, 158, 11, 0.7)', marginTop: '2px' }}>{unpaidOrders.length} por cobrar</p>
+                    </div>
+                </div>
             </div>
 
 
