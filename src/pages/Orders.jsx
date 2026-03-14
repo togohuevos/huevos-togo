@@ -372,46 +372,23 @@ export default function Orders() {
 
     // Helper function to render a single order card
     const renderOrderCard = (order) => (
-                    <div key={order.id} className="glass" style={{
-                        padding: '1rem', borderRadius: '1rem', marginBottom: '1rem',
-                        transition: 'background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
-                        position: 'relative',
-                        backgroundColor: order.estado === 'Delivered' 
-                            ? (order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
-                            : undefined,
-                        border: order.estado === 'Delivered' 
-                            ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
-                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '2px solid #ff0000'
-                                : undefined,
-                        boxShadow: order.estado === 'Delivered' 
-                            ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
-                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '0 0 15px rgba(255, 0, 0, 0.3)'
-                                : undefined,
-                    }}>
-                        {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
-                            <>
-                                <style>{`
-                                    @keyframes pulse-red {
-                                        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-                                        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
-                                        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
-                                    }
-                                `}</style>
-                                <div style={{
-                                    position: 'absolute', top: '-12px', left: '1rem',
-                                    backgroundColor: '#ff0000', color: 'white',
-                                    padding: '4px 14px', borderRadius: '20px', fontSize: '0.75rem',
-                                    fontWeight: '900', letterSpacing: '1px',
-                                    boxShadow: '0 2px 10px rgba(255, 0, 0, 0.5)',
-                                    animation: 'pulse-red 2s infinite',
-                                    zIndex: 10
-                                }}>
-                                    ¡ENTREGAR HOY!
-                                </div>
-                            </>
-                        )}
+        <div key={order.id} className="glass" style={{
+            padding: '1rem', borderRadius: '1rem', marginBottom: '1rem',
+            position: 'relative',
+            border: (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
+                ? '1px solid #ff4444'
+                : undefined,
+        }}>
+            {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
+                <div style={{
+                    position: 'absolute', top: '10px', right: '10px',
+                    backgroundColor: '#ff4444', color: 'white',
+                    padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem',
+                    fontWeight: 'bold', zIndex: 10
+                }}>
+                    HOY
+                </div>
+            )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                                 <h3 style={{ fontWeight: '600' }}>{order.clientes?.nombre_completo}</h3>
@@ -435,17 +412,15 @@ export default function Orders() {
                                     onClick={() => togglePayment(order)}
                                     style={{
                                         background: 'none', 
-                                        border: order.pago_estado === 'Pagado' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.1)',
+                                        border: 'none',
                                         color: order.pago_estado === 'Pagado' ? 'var(--accent)' : 'var(--text-muted)',
                                         cursor: 'pointer',
-                                        width: '32px', height: '32px', borderRadius: '8px',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        backgroundColor: order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
                                         transition: 'all 0.3s ease'
                                     }}
                                     title={order.pago_estado === 'Pagado' ? 'Pagado' : 'Marcar como Pagado'}
                                 >
-                                    <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>$</span>
+                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>$</span>
                                 </button>
 
                                 <div
@@ -457,13 +432,13 @@ export default function Orders() {
                                         }
                                     }}
                                     style={{
-                                        padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem',
+                                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem',
                                         backgroundColor: order.estado === 'Delivered' ? 'var(--accent)' : 'var(--primary)',
                                         color: 'white', cursor: 'pointer',
-                                        fontWeight: '600'
+                                        fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px'
                                     }}
                                 >
-                                    {order.estado === 'Delivered' ? 'Entregado' : 'Pendiente'}
+                                    {order.estado === 'Delivered' ? 'Entregado' : 'Entregar'}
                                 </div>
                             </div>
                         </div>

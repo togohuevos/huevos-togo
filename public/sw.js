@@ -1,7 +1,7 @@
-// Service Worker v13.5 - Pago Rápido Independiente (v1.3.5)
+// Service Worker v13.6 - Restauración Estética (v1.3.6)
 // Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v13.5';
+const CACHE_NAME = 'huevos-togo-v13.6';
 const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {

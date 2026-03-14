@@ -1,9 +1,17 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.5';
+export const APP_VERSION = '1.3.6';
 
 export const CHANGELOG = [
+    {
+        version: '1.3.6',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Restauración estética: diseño de tarjetas más limpio y consistente.',
+            'Refinado de botones: mejor integración visual para entrega y pagos.',
+        ]
+    },
     {
         version: '1.3.5',
         date: '14 de marzo de 2026',
