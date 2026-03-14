@@ -1,7 +1,7 @@
-// Service Worker v13 - Network-first strategy for ALL resources
+// Service Worker v13.2 - Consolidación de Orden de Pedidos (v1.3.2)
 // Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v13';
+const CACHE_NAME = 'huevos-togo-v13.2';
 const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {

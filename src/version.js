@@ -1,16 +1,16 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.4.1';
+export const APP_VERSION = '1.3.2';
 
 export const CHANGELOG = [
     {
-        version: '1.4',
+        version: '1.3.2',
         date: '14 de marzo de 2026',
         changes: [
-            'Organización de pedidos en nueva vista por grupos: ⚠️ Por Cobrar, ⏳ Por Entregar, ✅ Completados',
-            'Separadores visuales con colores y formato para cada bloque de pedidos',
-            'Contadores numéricos integrados en cada sección',
+            'Organización de pedidos por grupos: ⏳ Por Entregar, ⚠️ Por Cobrar, ✅ Completados',
+            'Separadores visuales con colores y contadores por bloque',
+            'Corrección de orden de prioridad y visibilidad de listas',
         ]
     },
     {
