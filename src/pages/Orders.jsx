@@ -313,7 +313,7 @@ export default function Orders() {
         });
     };
 
-    // Filter orders by week
+    // Filter orders by view mode
     const { monday, sunday } = getWeekRange(weekOffset);
     const mondayStr = toLocalDateStr(monday);
     const sundayStr = toLocalDateStr(sunday);
@@ -321,29 +321,205 @@ export default function Orders() {
         ? orders.filter(o => o.fecha_entrega >= mondayStr && o.fecha_entrega <= sundayStr)
         : orders;
 
-    // Sort: pendientes primero (respetando sortOrder), entregados al final (más reciente primero)
+    // Grouping Logic for "Semana" and "Todos" Views
     const todayStr = toLocalDateStr(new Date());
-    const pendingFiltered = baseFiltered
+
+    // Group 1: Deudores (Delivered but Pending Payment) - Sort by most recent delivery
+    const deudores = baseFiltered
+        .filter(o => o.estado === 'Delivered' && o.pago_estado === 'Pendiente')
+        .sort((a, b) => new Date(b.entregado_at || b.created_at || 0) - new Date(a.entregado_at || a.created_at || 0));
+
+    // Group 2: Por Entregar (Pending Delivery) - Priority to 'Hoy', then by creation date
+    const porEntregar = baseFiltered
         .filter(o => o.estado !== 'Delivered')
         .sort((a, b) => {
-            // Priority 1: Delivery date is Today
             const isTodayA = a.fecha_entrega === todayStr;
             const isTodayB = b.fecha_entrega === todayStr;
-
             if (isTodayA && !isTodayB) return -1;
             if (!isTodayA && isTodayB) return 1;
-
-            // Priority 2: Standard sort order
             const dateA = new Date(a.created_at || 0);
             const dateB = new Date(b.created_at || 0);
             return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
         });
-    const deliveredFiltered = baseFiltered
-        .filter(o => o.estado === 'Delivered')
+
+    // Group 3: Completados (Delivered and Paid) - Sort by most recent delivery
+    const completados = baseFiltered
+        .filter(o => o.estado === 'Delivered' && o.pago_estado === 'Pagado')
         .sort((a, b) => new Date(b.entregado_at || b.created_at || 0) - new Date(a.entregado_at || a.created_at || 0));
-    const filteredOrders = [...pendingFiltered, ...deliveredFiltered];
+
+    // For backward compatibility in parts of code that might still depend on a single list
+    const filteredOrders = [...deudores, ...porEntregar, ...completados];
 
     const weekLabel = weekOffset === 0 ? 'Esta Semana' : weekOffset === 1 ? 'Próxima Semana' : weekOffset === -1 ? 'Semana Pasada' : `Semana del ${formatWeekDate(monday)}`;
+
+    // Helper function to render a single order card
+    const renderOrderCard = (order) => (
+                    <div key={order.id} className="glass" style={{
+                        padding: '1rem', borderRadius: '1rem', marginBottom: '1rem',
+                        transition: 'background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
+                        position: 'relative',
+                        backgroundColor: order.estado === 'Delivered' 
+                            ? (order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
+                            : undefined,
+                        border: order.estado === 'Delivered' 
+                            ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
+                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
+                                ? '2px solid #ff0000'
+                                : undefined,
+                        boxShadow: order.estado === 'Delivered' 
+                            ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
+                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
+                                ? '0 0 15px rgba(255, 0, 0, 0.3)'
+                                : undefined,
+                    }}>
+                        {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
+                            <>
+                                <style>{`
+                                    @keyframes pulse-red {
+                                        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+                                        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+                                        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+                                    }
+                                `}</style>
+                                <div style={{
+                                    position: 'absolute', top: '-12px', left: '1rem',
+                                    backgroundColor: '#ff0000', color: 'white',
+                                    padding: '4px 14px', borderRadius: '20px', fontSize: '0.75rem',
+                                    fontWeight: '900', letterSpacing: '1px',
+                                    boxShadow: '0 2px 10px rgba(255, 0, 0, 0.5)',
+                                    animation: 'pulse-red 2s infinite',
+                                    zIndex: 10
+                                }}>
+                                    ¡ENTREGAR HOY!
+                                </div>
+                            </>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <h3 style={{ fontWeight: '600' }}>{order.clientes?.nombre_completo}</h3>
+                                <p style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{order.cantidad} panales - Tipo {order.tipo_huevo}</p>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <button
+                                    onClick={() => startEdit(order)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setDeleteModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo, tipo_huevo: order.tipo_huevo, cantidad: order.cantidad })}
+                                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <div
+                                    onClick={() => {
+                                        if (order.estado === 'Delivered') {
+                                            setReverseModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo });
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem',
+                                        backgroundColor: order.estado === 'Delivered' ? 'var(--accent)' : 'var(--primary)',
+                                        color: 'white', cursor: order.estado === 'Delivered' ? 'pointer' : 'default'
+                                    }}
+                                >
+                                    {order.estado === 'Delivered' ? 'Entregado' : 'Pendiente'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Delivery Info */}
+                        {order.estado === 'Delivered' && order.entregado_por && (
+                            <div style={{
+                                marginTop: '0.5rem', padding: '4px 10px', borderRadius: '8px',
+                                backgroundColor: 'rgba(0,0,0,0.2)', display: 'inline-flex',
+                                alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem'
+                            }}>
+                                <CheckCircle size={14} style={{ color: USER_COLORS[order.entregado_por] || '#ccc' }} />
+                                <span>
+                                    Entregado por{' '}
+                                    <strong style={{ color: USER_COLORS[order.entregado_por] || '#ccc' }}>
+                                        {order.entregado_por}
+                                    </strong>
+                                </span>
+                                {order.entregado_at && (
+                                    <span style={{ color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
+                                        · {formatDeliveryTime(order.entregado_at)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            <MapPin size={14} />
+                            <span>
+                                {order.clientes?.direccion}
+                                {(order.clientes?.unidad_apto || order.clientes?.numero_casa) && ' - '}
+                                {order.clientes?.unidad_apto} {order.clientes?.numero_casa && `(${order.clientes?.numero_casa})`}
+                            </span>
+                        </div>
+
+                        {/* Payment Status Toggle */}
+                        {order.estado === 'Delivered' && (
+                            <div style={{ marginTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    💰 Estado de Pago:
+                                </span>
+                                <button
+                                    onClick={() => updatePaymentStatus(order.id, order.pago_estado === 'Pagado' ? 'Pendiente' : 'Pagado')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                        padding: '4px 12px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                                        fontSize: '0.75rem', fontWeight: 'bold',
+                                        backgroundColor: order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                        color: order.pago_estado === 'Pagado' ? '#10b981' : '#f59e0b',
+                                        transition: 'all 0.3s'
+                                    }}
+                                >
+                                    {order.pago_estado === 'Pagado' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                                    {order.pago_estado === 'Pagado' ? 'Pagado' : 'Pendiente Pago'}
+                                </button>
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                                <Calendar size={14} />
+                                <span>
+                                    {order.fecha_entrega}
+                                    {order.fecha_entrega && (
+                                        <span style={{ marginLeft: '0.35rem', color: 'var(--primary)', fontWeight: '600', textTransform: 'capitalize' }}>
+                                            · {new Date(order.fecha_entrega + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long' })}
+                                        </span>
+                                    )}
+                                </span>
+                            </div>
+                            {order.estado === 'Pending' && (
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}
+                                    onClick={() => updateStatus(order.id, 'Delivered')}
+                                >
+                                    Marcar Entregado
+                                </button>
+                            )}
+                            {order.estado === 'Delivered' && (localStorage.getItem('auto_whatsapp') === 'true') && (
+                                <button
+                                    onClick={() => sendWhatsAppReceipt(order)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                        backgroundColor: '#25D366', color: 'white', border: 'none',
+                                        padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem',
+                                        fontWeight: '600', cursor: 'pointer'
+                                    }}
+                                >
+                                    <MessageSquare size={14} /> Enviar Recibo
+                                </button>
+                            )}
+                        </div>
+                    </div>
+    );
 
     return (
         <div style={{ padding: '1rem', paddingBottom: '5rem' }}>
@@ -685,185 +861,7 @@ export default function Orders() {
                 </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {filteredOrders.length === 0 ? (
-                    <div className="glass" style={{ padding: '2rem', borderRadius: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No hay pedidos {viewMode === 'week' ? 'esta semana' : ''} 🎉
-                    </div>
-                ) : filteredOrders.map(order => (
-                    <div key={order.id} className="glass" style={{
-                        padding: '1rem', borderRadius: '1rem',
-                        transition: 'background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
-                        position: 'relative',
-                        backgroundColor: order.estado === 'Delivered' 
-                            ? (order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
-                            : undefined,
-                        border: order.estado === 'Delivered' 
-                            ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
-                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '2px solid #ff0000'
-                                : undefined,
-                        boxShadow: order.estado === 'Delivered' 
-                            ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
-                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '0 0 15px rgba(255, 0, 0, 0.3)'
-                                : undefined,
-                    }}>
-                        {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
-                            <>
-                                <style>{`
-                                    @keyframes pulse-red {
-                                        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-                                        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
-                                        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
-                                    }
-                                `}</style>
-                                <div style={{
-                                    position: 'absolute', top: '-12px', left: '1rem',
-                                    backgroundColor: '#ff0000', color: 'white',
-                                    padding: '4px 14px', borderRadius: '20px', fontSize: '0.75rem',
-                                    fontWeight: '900', letterSpacing: '1px',
-                                    boxShadow: '0 2px 10px rgba(255, 0, 0, 0.5)',
-                                    animation: 'pulse-red 2s infinite',
-                                    zIndex: 10
-                                }}>
-                                    ¡ENTREGAR HOY!
-                                </div>
-                            </>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div>
-                                <h3 style={{ fontWeight: '600' }}>{order.clientes?.nombre_completo}</h3>
-                                <p style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{order.cantidad} panales - Tipo {order.tipo_huevo}</p>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <button
-                                    onClick={() => startEdit(order)}
-                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}
-                                >
-                                    <Pencil size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setDeleteModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo, tipo_huevo: order.tipo_huevo, cantidad: order.cantidad })}
-                                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                                <div
-                                    onClick={() => {
-                                        if (order.estado === 'Delivered') {
-                                            setReverseModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo });
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem',
-                                        backgroundColor: order.estado === 'Delivered' ? 'var(--accent)' : 'var(--primary)',
-                                        color: 'white', cursor: order.estado === 'Delivered' ? 'pointer' : 'default'
-                                    }}
-                                >
-                                    {order.estado === 'Delivered' ? 'Entregado' : 'Pendiente'}
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Delivery Info */}
-                        {order.estado === 'Delivered' && order.entregado_por && (
-                            <div style={{
-                                marginTop: '0.5rem', padding: '4px 10px', borderRadius: '8px',
-                                backgroundColor: 'rgba(0,0,0,0.2)', display: 'inline-flex',
-                                alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem'
-                            }}>
-                                <CheckCircle size={14} style={{ color: USER_COLORS[order.entregado_por] || '#ccc' }} />
-                                <span>
-                                    Entregado por{' '}
-                                    <strong style={{ color: USER_COLORS[order.entregado_por] || '#ccc' }}>
-                                        {order.entregado_por}
-                                    </strong>
-                                </span>
-                                {order.entregado_at && (
-                                    <span style={{ color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
-                                        · {formatDeliveryTime(order.entregado_at)}
-                                    </span>
-                                )}
-                            </div>
-                        )}
-
-                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            <MapPin size={14} />
-                            <span>
-                                {order.clientes?.direccion}
-                                {(order.clientes?.unidad_apto || order.clientes?.numero_casa) && ' - '}
-                                {order.clientes?.unidad_apto} {order.clientes?.numero_casa && `(${order.clientes?.numero_casa})`}
-                            </span>
-                        </div>
-
-                        {/* Payment Status Toggle */}
-                        <div style={{ marginTop: '0.75rem' }}>
-                            <button
-                                onClick={() => updatePaymentStatus(
-                                    order.id,
-                                    (order.pago_estado || 'Pendiente') === 'Pagado' ? 'Pendiente' : 'Pagado'
-                                )}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                    padding: '5px 12px', borderRadius: '999px', border: 'none',
-                                    cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700',
-                                    transition: 'all 0.2s ease',
-                                    backgroundColor: (order.pago_estado || 'Pendiente') === 'Pagado'
-                                        ? 'rgba(16, 185, 129, 0.15)'
-                                        : 'rgba(245, 158, 11, 0.15)',
-                                    color: (order.pago_estado || 'Pendiente') === 'Pagado'
-                                        ? '#10b981'
-                                        : '#f59e0b',
-                                    border: `1px solid ${(order.pago_estado || 'Pendiente') === 'Pagado'
-                                        ? 'rgba(16,185,129,0.4)'
-                                        : 'rgba(245,158,11,0.4)'
-                                        }`
-                                }}
-                            >
-                                <DollarSign size={13} />
-                                {(order.pago_estado || 'Pendiente') === 'Pagado' ? '✅ Pagado' : '⏳ Pago Pendiente'}
-                            </button>
-                        </div>
-
-                        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                                <Calendar size={14} />
-                                <span>
-                                    {order.fecha_entrega}
-                                    {order.fecha_entrega && (
-                                        <span style={{ marginLeft: '0.35rem', color: 'var(--primary)', fontWeight: '600', textTransform: 'capitalize' }}>
-                                            · {new Date(order.fecha_entrega + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long' })}
-                                        </span>
-                                    )}
-                                </span>
-                            </div>
-                            {order.estado === 'Pending' && (
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}
-                                    onClick={() => updateStatus(order.id, 'Delivered')}
-                                >
-                                    Marcar Entregado
-                                </button>
-                            )}
-                            {order.estado === 'Delivered' && (localStorage.getItem('auto_whatsapp') === 'true') && (
-                                <button
-                                    onClick={() => sendWhatsAppReceipt(order)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                        backgroundColor: '#25D366', color: 'white', border: 'none',
-                                        padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem',
-                                        fontWeight: '600', cursor: 'pointer'
-                                    }}
-                                >
-                                    <MessageSquare size={14} /> Enviar Recibo
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 }

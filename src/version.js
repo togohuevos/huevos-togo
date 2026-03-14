@@ -1,9 +1,26 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.1';
+export const APP_VERSION = '1.4';
 
 export const CHANGELOG = [
+    {
+        version: '1.4',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Organización de pedidos en nueva vista por grupos: ⚠️ Por Cobrar, ⏳ Por Entregar, ✅ Completados',
+            'Separadores visuales con colores y formato para cada bloque de pedidos',
+            'Contadores numéricos integrados en cada sección',
+        ]
+    },
+    {
+        version: '1.3.1',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Nuevo tablero de resumen de pagos en la pestaña Contable',
+            'Cálculo preciso de Recaudado vs Pendiente basado en estado de pago',
+        ]
+    },
     {
         version: '1.3',
         date: '14 de marzo de 2025',
