@@ -701,20 +701,21 @@ export default function Orders() {
                         border: order.estado === 'Delivered' 
                             ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
                             : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '1px solid var(--primary)'
+                                ? '1px solid #f59e0b'
                                 : undefined,
                         boxShadow: order.estado === 'Delivered' 
                             ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
                             : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '0 0 8px rgba(96, 165, 250, 0.2)'
+                                ? '0 0 12px rgba(245, 158, 11, 0.25)'
                                 : undefined,
                     }}>
                         {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
                             <div style={{
                                 position: 'absolute', top: '-10px', left: '1rem',
-                                backgroundColor: 'var(--primary)', color: 'white',
-                                padding: '2px 10px', borderRadius: '20px', fontSize: '0.65rem',
-                                fontWeight: '800', letterSpacing: '0.5px'
+                                backgroundColor: '#f59e0b', color: 'white',
+                                padding: '3px 12px', borderRadius: '20px', fontSize: '0.7rem',
+                                fontWeight: '900', letterSpacing: '0.5px',
+                                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)'
                             }}>
                                 HOY
                             </div>
