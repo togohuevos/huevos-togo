@@ -1,7 +1,7 @@
-// Service Worker v4 - Network-first strategy for ALL resources
+// Service Worker v5 - Network-first strategy for ALL resources
 // Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v4';
+const CACHE_NAME = 'huevos-togo-v5';
 const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {

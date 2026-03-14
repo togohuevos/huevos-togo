@@ -1,9 +1,18 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3';
+export const APP_VERSION = '1.4';
 
 export const CHANGELOG = [
+    {
+        version: '1.4',
+        date: '14 de marzo de 2025',
+        changes: [
+            'Los pedidos entregados pero con pago pendiente ahora se muestran en color amarillo translúcido.',
+            'Los pedidos entregados y pagados se mantienen en color verde translúcido.',
+            'Se optimizó la visibilidad de los estados de entrega y pago combinados.',
+        ]
+    },
     {
         version: '1.3',
         date: '14 de marzo de 2025',

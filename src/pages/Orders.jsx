@@ -685,9 +685,15 @@ export default function Orders() {
                     <div key={order.id} className="glass" style={{
                         padding: '1rem', borderRadius: '1rem',
                         transition: 'background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
-                        backgroundColor: order.estado === 'Delivered' ? 'rgba(16, 185, 129, 0.1)' : undefined,
-                        border: order.estado === 'Delivered' ? '1px solid rgba(16, 185, 129, 0.4)' : undefined,
-                        boxShadow: order.estado === 'Delivered' ? '0 0 12px rgba(16, 185, 129, 0.15)' : undefined,
+                        backgroundColor: order.estado === 'Delivered' 
+                            ? (order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
+                            : undefined,
+                        border: order.estado === 'Delivered' 
+                            ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
+                            : undefined,
+                        boxShadow: order.estado === 'Delivered' 
+                            ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
+                            : undefined,
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
