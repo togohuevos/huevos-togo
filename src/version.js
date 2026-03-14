@@ -1,9 +1,18 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.3';
+export const APP_VERSION = '1.3.4';
 
 export const CHANGELOG = [
+    {
+        version: '1.3.4',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Detección de duplicados en Clientes: aviso visual si el nombre o celular ya existen.',
+            'Nuevo modal de advertencia con opción de forzar registro o corregir datos.',
+            'Mejoras en la validación de formularios para evitar registros accidentales.',
+        ]
+    },
     {
         version: '1.3.3',
         date: '14 de marzo de 2026',

@@ -22,6 +22,7 @@ export default function Clients() {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [stats, setStats] = useState({ totalPanales: 0, totalPaid: 0 });
     const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: '' });
+    const [duplicateModal, setDuplicateModal] = useState({ show: false, type: '', existingName: '' });
 
     useEffect(() => {
         fetchClientes();
@@ -43,8 +44,28 @@ export default function Clients() {
         }
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
+    const handleSave = async (e, force = false) => {
+        if (e) e.preventDefault();
+
+        // Check for duplicates only when creating or if name/cell changed
+        if (!force) {
+            const isDuplicate = clientes.find(c => {
+                const sameName = c.nombre_completo.toLowerCase().trim() === (clienteData.nombre_completo || '').toLowerCase().trim();
+                const samePhone = c.celular.trim() === (clienteData.celular || '').trim();
+                
+                if (isEditing) {
+                    // If editing, only count as duplicate if it's DIFFERENT from the current record
+                    return (sameName || samePhone) && c.id !== clienteData.id;
+                }
+                return sameName || samePhone;
+            });
+
+            if (isDuplicate) {
+                const type = isDuplicate.celular.trim() === (clienteData.celular || '').trim() ? 'celular' : 'nombre';
+                setDuplicateModal({ show: true, type, existingName: isDuplicate.nombre_completo });
+                return;
+            }
+        }
 
         if (isEditing) {
             const { data, error } = await supabase
@@ -68,6 +89,7 @@ export default function Clients() {
                 resetForm();
             }
         }
+        setDuplicateModal({ show: false, type: '', existingName: '' });
     };
 
     const resetForm = () => {
@@ -378,6 +400,41 @@ export default function Clients() {
                     ))
                 }
             </div>
+            {/* Duplicate Warning Modal */}
+            {duplicateModal.show && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1200, padding: '2rem'
+                }}>
+                    <div className="glass" style={{ padding: '2.5rem', borderRadius: '1.5rem', textAlign: 'center', maxWidth: '450px', width: '100%', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <div style={{ backgroundColor: 'rgba(234, 179, 8, 0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                            <Users size={30} style={{ color: '#eab308' }} />
+                        </div>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>¡Atención! Posible Duplicado</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                            Ya existe un cliente con este <strong>{duplicateModal.type}</strong>:<br/>
+                            <span style={{ color: 'var(--text)', fontWeight: '600', fontSize: '1.1rem' }}>{duplicateModal.existingName}</span>
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <button
+                                className="btn"
+                                style={{ backgroundColor: 'var(--accent)', fontWeight: 'bold', padding: '1rem' }}
+                                onClick={() => handleSave(null, true)}
+                            >
+                                Registrar de Todos Modos
+                            </button>
+                            <button
+                                className="btn"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '1rem' }}
+                                onClick={() => setDuplicateModal({ show: false, type: '', existingName: '' })}
+                            >
+                                Cancelar y Corregir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

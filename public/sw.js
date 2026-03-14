@@ -1,7 +1,7 @@
-// Service Worker v13.3 - Orden por Ubicación (v1.3.3)
+// Service Worker v13.4 - Detección de Duplicados (v1.3.4)
 // Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v13.3';
+const CACHE_NAME = 'huevos-togo-v13.4';
 const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {
