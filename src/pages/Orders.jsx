@@ -701,24 +701,35 @@ export default function Orders() {
                         border: order.estado === 'Delivered' 
                             ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
                             : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '1px solid #f59e0b'
+                                ? '2px solid #ff0000'
                                 : undefined,
                         boxShadow: order.estado === 'Delivered' 
                             ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
                             : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
-                                ? '0 0 12px rgba(245, 158, 11, 0.25)'
+                                ? '0 0 15px rgba(255, 0, 0, 0.3)'
                                 : undefined,
                     }}>
                         {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
-                            <div style={{
-                                position: 'absolute', top: '-10px', left: '1rem',
-                                backgroundColor: '#f59e0b', color: 'white',
-                                padding: '3px 12px', borderRadius: '20px', fontSize: '0.7rem',
-                                fontWeight: '900', letterSpacing: '0.5px',
-                                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)'
-                            }}>
-                                HOY
-                            </div>
+                            <>
+                                <style>{`
+                                    @keyframes pulse-red {
+                                        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+                                        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+                                        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+                                    }
+                                `}</style>
+                                <div style={{
+                                    position: 'absolute', top: '-12px', left: '1rem',
+                                    backgroundColor: '#ff0000', color: 'white',
+                                    padding: '4px 14px', borderRadius: '20px', fontSize: '0.75rem',
+                                    fontWeight: '900', letterSpacing: '1px',
+                                    boxShadow: '0 2px 10px rgba(255, 0, 0, 0.5)',
+                                    animation: 'pulse-red 2s infinite',
+                                    zIndex: 10
+                                }}>
+                                    ¡ENTREGAR HOY!
+                                </div>
+                            </>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
