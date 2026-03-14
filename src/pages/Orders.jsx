@@ -434,18 +434,17 @@ export default function Orders() {
                                 <button
                                     onClick={() => togglePayment(order)}
                                     style={{
-                                        background: 'none', 
-                                        border: order.pago_estado === 'Pagado' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.1)',
-                                        color: order.pago_estado === 'Pagado' ? 'var(--accent)' : 'var(--text-muted)',
+                                        background: order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.1)', 
+                                        border: order.pago_estado === 'Pagado' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(245, 158, 11, 0.3)',
+                                        color: order.pago_estado === 'Pagado' ? '#10b981' : '#f59e0b',
                                         cursor: 'pointer',
-                                        width: '32px', height: '32px', borderRadius: '8px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        backgroundColor: order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                                        transition: 'all 0.3s ease'
+                                        padding: '6px 12px', borderRadius: '12px', fontSize: '0.7rem',
+                                        fontWeight: 'bold',
+                                        transition: 'all 0.3s ease',
+                                        textTransform: 'uppercase'
                                     }}
-                                    title={order.pago_estado === 'Pagado' ? 'Pagado' : 'Marcar como Pagado'}
                                 >
-                                    <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>$</span>
+                                    {order.pago_estado === 'Pagado' ? 'PAGADO' : 'PENDIENTE PAGO'}
                                 </button>
 
                                 <div

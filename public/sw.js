@@ -1,7 +1,7 @@
-// Service Worker v13.7 - Regreso al Estilo Llamativo (v1.3.7)
+// Service Worker v13.8 - Botón de Pago con Texto (v1.3.8)
 // Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v13.7';
+const CACHE_NAME = 'huevos-togo-v13.8';
 const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {

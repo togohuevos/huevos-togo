@@ -1,9 +1,18 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.7';
+export const APP_VERSION = '1.3.8';
 
 export const CHANGELOG = [
+    {
+        version: '1.3.8',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Botón de pago rediseñado con texto: "PENDIENTE PAGO" / "PAGADO".',
+            'Ubicación mejorada a la izquierda para mayor comodidad visual.',
+            'Estilo consistente con el diseño vibrante y premium.',
+        ]
+    },
     {
         version: '1.3.7',
         date: '14 de marzo de 2026',
