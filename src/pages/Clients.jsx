@@ -127,7 +127,15 @@ export default function Clients() {
                 return { ...o, totalPrice: total };
             });
 
-            setClientHistory(historyWithPrices);
+            // Pendientes más recientes primero, entregados al final más recientes primero
+            const pending = historyWithPrices
+                .filter(o => o.estado !== 'Delivered')
+                .sort((a, b) => new Date(b.fecha_entrega) - new Date(a.fecha_entrega));
+            const delivered = historyWithPrices
+                .filter(o => o.estado === 'Delivered')
+                .sort((a, b) => new Date(b.fecha_entrega) - new Date(a.fecha_entrega));
+
+            setClientHistory([...pending, ...delivered]);
             setStats({ totalPanales, totalPaid });
         }
         setHistoryLoading(false);

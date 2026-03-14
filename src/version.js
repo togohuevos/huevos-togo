@@ -1,12 +1,22 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.2';
+export const APP_VERSION = '1.3';
 
 export const CHANGELOG = [
     {
-        version: '1.2',
-        date: '10 de marzo de 2025',
+        version: '1.3',
+        date: '14 de marzo de 2025',
+        changes: [
+            'Al marcar un pedido como entregado, se mueve automáticamente al final de la lista.',
+            'Los pedidos entregados se ordenan del más reciente al más viejo dentro de su grupo.',
+            'El botón de ordenar solo afecta a los pedidos pendientes.',
+            'En el historial del cliente, los pedidos pendientes aparecen primero y los entregados al final.',
+            'Las tarjetas de pedidos entregados ahora se muestran en verde translúcido con borde y sombra verde.',
+            'La transición al color verde es animada al marcar un pedido como entregado.',
+        ]
+    },
+    {
         changes: [
             'Se agregó pantalla de bienvenida animada con el personaje de huevo y su bigote al abrir la app.',
             'Se agregó botón de estado de pago (Pagado / Pago Pendiente) en cada tarjeta de pedido.',

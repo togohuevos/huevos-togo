@@ -147,7 +147,13 @@ export default function Orders() {
             .from('pedidos')
             .select('*, clientes(*)')
             .order('created_at', { ascending: false });
-        if (data) setOrders(data);
+        if (data) {
+            const pending = data.filter(o => o.estado !== 'Delivered')
+                .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            const delivered = data.filter(o => o.estado === 'Delivered')
+                .sort((a, b) => new Date(b.entregado_at || b.created_at || 0) - new Date(a.entregado_at || a.created_at || 0));
+            setOrders([...pending, ...delivered]);
+        }
         setLoading(false);
     };
 
@@ -260,6 +266,16 @@ export default function Orders() {
         window.open(`https://wa.me/57${order.clientes?.celular}?text=${encoded}`, '_blank');
     };
 
+    const sortOrders = (list) => {
+        const pending = list
+            .filter(o => o.estado !== 'Delivered')
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        const delivered = list
+            .filter(o => o.estado === 'Delivered')
+            .sort((a, b) => new Date(b.entregado_at || b.created_at || 0) - new Date(a.entregado_at || a.created_at || 0));
+        return [...pending, ...delivered];
+    };
+
     const updateStatus = async (id, status) => {
         const updateData = { estado: status };
 
@@ -273,7 +289,8 @@ export default function Orders() {
 
         const { error } = await supabase.from('pedidos').update(updateData).eq('id', id);
         if (!error) {
-            setOrders(orders.map(o => o.id === id ? { ...o, ...updateData } : o));
+            const updated = orders.map(o => o.id === id ? { ...o, ...updateData } : o);
+            setOrders(sortOrders(updated));
 
             // Get the freshest value of autoWhatsApp because the state might be stale in this closure
             const isAutoWa = localStorage.getItem('auto_whatsapp') === 'true';
@@ -304,12 +321,18 @@ export default function Orders() {
         ? orders.filter(o => o.fecha_entrega >= mondayStr && o.fecha_entrega <= sundayStr)
         : orders;
 
-    // Sort by created_at
-    const filteredOrders = [...baseFiltered].sort((a, b) => {
-        const dateA = new Date(a.created_at || 0);
-        const dateB = new Date(b.created_at || 0);
-        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-    });
+    // Sort: pendientes primero (respetando sortOrder), entregados al final (más reciente primero)
+    const pendingFiltered = baseFiltered
+        .filter(o => o.estado !== 'Delivered')
+        .sort((a, b) => {
+            const dateA = new Date(a.created_at || 0);
+            const dateB = new Date(b.created_at || 0);
+            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+    const deliveredFiltered = baseFiltered
+        .filter(o => o.estado === 'Delivered')
+        .sort((a, b) => new Date(b.entregado_at || b.created_at || 0) - new Date(a.entregado_at || a.created_at || 0));
+    const filteredOrders = [...pendingFiltered, ...deliveredFiltered];
 
     const weekLabel = weekOffset === 0 ? 'Esta Semana' : weekOffset === 1 ? 'Próxima Semana' : weekOffset === -1 ? 'Semana Pasada' : `Semana del ${formatWeekDate(monday)}`;
 
@@ -659,7 +682,13 @@ export default function Orders() {
                         No hay pedidos {viewMode === 'week' ? 'esta semana' : ''} 🎉
                     </div>
                 ) : filteredOrders.map(order => (
-                    <div key={order.id} className="glass" style={{ padding: '1rem', borderRadius: '1rem' }}>
+                    <div key={order.id} className="glass" style={{
+                        padding: '1rem', borderRadius: '1rem',
+                        transition: 'background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
+                        backgroundColor: order.estado === 'Delivered' ? 'rgba(16, 185, 129, 0.1)' : undefined,
+                        border: order.estado === 'Delivered' ? '1px solid rgba(16, 185, 129, 0.4)' : undefined,
+                        boxShadow: order.estado === 'Delivered' ? '0 0 12px rgba(16, 185, 129, 0.15)' : undefined,
+                    }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                                 <h3 style={{ fontWeight: '600' }}>{order.clientes?.nombre_completo}</h3>
