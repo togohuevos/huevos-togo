@@ -1,9 +1,19 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3';
+export const APP_VERSION = '1.4';
 
 export const CHANGELOG = [
+    {
+        version: '1.4',
+        date: '14 de marzo de 2025',
+        changes: [
+            'Priorización de pedidos: los pedidos programados para "Hoy" aparecen arriba del todo.',
+            'Vista semanal por defecto: la pestaña de Semana es ahora la principal al abrir Pedidos.',
+            'Resaltado visual: los pedidos del día actual incluyen un badge de "HOY" y un borde destacado.',
+            'Selector de vistas reordenado: Semana | Todos | Ruta.',
+        ]
+    },
     {
         version: '1.3',
         date: '14 de marzo de 2025',

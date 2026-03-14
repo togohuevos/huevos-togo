@@ -54,7 +54,7 @@ export default function Orders() {
     });
 
     // Week filter state
-    const [viewMode, setViewMode] = useState('all'); // 'all', 'week', or 'route'
+    const [viewMode, setViewMode] = useState('week'); // 'week' is now default, also 'all' or 'route'
     const [weekOffset, setWeekOffset] = useState(0);
 
     // Sort order state: 'desc' = más reciente primero, 'asc' = más viejo primero
@@ -322,9 +322,18 @@ export default function Orders() {
         : orders;
 
     // Sort: pendientes primero (respetando sortOrder), entregados al final (más reciente primero)
+    const todayStr = toLocalDateStr(new Date());
     const pendingFiltered = baseFiltered
         .filter(o => o.estado !== 'Delivered')
         .sort((a, b) => {
+            // Priority 1: Delivery date is Today
+            const isTodayA = a.fecha_entrega === todayStr;
+            const isTodayB = b.fecha_entrega === todayStr;
+
+            if (isTodayA && !isTodayB) return -1;
+            if (!isTodayA && isTodayB) return 1;
+
+            // Priority 2: Standard sort order
             const dateA = new Date(a.created_at || 0);
             const dateB = new Date(b.created_at || 0);
             return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
@@ -363,19 +372,8 @@ export default function Orders() {
                 </div>
             </div>
 
-            {/* View Mode Toggle */}
+            {/* View Mode Toggle - Reordered: Week | All | Route */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                <button
-                    onClick={() => setViewMode('all')}
-                    style={{
-                        flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                        fontWeight: '600', fontSize: '0.8rem',
-                        backgroundColor: viewMode === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                        color: viewMode === 'all' ? 'white' : 'var(--text-muted)'
-                    }}
-                >
-                    Todos
-                </button>
                 <button
                     onClick={() => setViewMode('week')}
                     style={{
@@ -386,6 +384,17 @@ export default function Orders() {
                     }}
                 >
                     Semana
+                </button>
+                <button
+                    onClick={() => setViewMode('all')}
+                    style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        fontWeight: '600', fontSize: '0.8rem',
+                        backgroundColor: viewMode === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                        color: viewMode === 'all' ? 'white' : 'var(--text-muted)'
+                    }}
+                >
+                    Todos
                 </button>
                 <button
                     onClick={() => setViewMode('route')}
@@ -685,16 +694,31 @@ export default function Orders() {
                     <div key={order.id} className="glass" style={{
                         padding: '1rem', borderRadius: '1rem',
                         transition: 'background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
+                        position: 'relative',
                         backgroundColor: order.estado === 'Delivered' 
                             ? (order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
                             : undefined,
                         border: order.estado === 'Delivered' 
                             ? `1px solid ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}` 
-                            : undefined,
+                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
+                                ? '1px solid var(--primary)'
+                                : undefined,
                         boxShadow: order.estado === 'Delivered' 
                             ? `0 0 12px ${order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}` 
-                            : undefined,
+                            : (order.fecha_entrega === todayStr && order.estado !== 'Delivered')
+                                ? '0 0 8px rgba(96, 165, 250, 0.2)'
+                                : undefined,
                     }}>
+                        {order.fecha_entrega === todayStr && order.estado !== 'Delivered' && (
+                            <div style={{
+                                position: 'absolute', top: '-10px', left: '1rem',
+                                backgroundColor: 'var(--primary)', color: 'white',
+                                padding: '2px 10px', borderRadius: '20px', fontSize: '0.65rem',
+                                fontWeight: '800', letterSpacing: '0.5px'
+                            }}>
+                                HOY
+                            </div>
+                        )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                                 <h3 style={{ fontWeight: '600' }}>{order.clientes?.nombre_completo}</h3>
