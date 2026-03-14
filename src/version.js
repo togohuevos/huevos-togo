@@ -1,9 +1,18 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.6';
+export const APP_VERSION = '1.3.7';
 
 export const CHANGELOG = [
+    {
+        version: '1.3.7',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Restauración estética completa: volvieron los colores vibrantes y las animaciones llamativas.',
+            'Resaltado premium: pedidos de hoy con animación pulsante y bordes destacados.',
+            'Botones originales restaurados para máxima visibilidad.',
+        ]
+    },
     {
         version: '1.3.6',
         date: '14 de marzo de 2026',
