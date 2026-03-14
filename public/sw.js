@@ -1,7 +1,7 @@
-// Service Worker v13.4 - Detección de Duplicados (v1.3.4)
+// Service Worker v13.5 - Pago Rápido Independiente (v1.3.5)
 // Guarantees users always see the latest version of the app
 
-const CACHE_NAME = 'huevos-togo-v13.4';
+const CACHE_NAME = 'huevos-togo-v13.5';
 const STATIC_IMAGES = ['/logo.jpg', '/logo-pwa.png'];
 
 self.addEventListener('install', (event) => {

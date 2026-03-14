@@ -1,9 +1,18 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.4';
+export const APP_VERSION = '1.3.5';
 
 export const CHANGELOG = [
+    {
+        version: '1.3.5',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Botón de pago rápido ($) independiente en cada pedido.',
+            'Indicador visual verde para pedidos pagados que aún no se han entregado.',
+            'Flujo optimizado para marcar entregas y pagos por separado.',
+        ]
+    },
     {
         version: '1.3.4',
         date: '14 de marzo de 2026',

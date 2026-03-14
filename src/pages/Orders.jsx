@@ -206,6 +206,11 @@ export default function Orders() {
         }
     };
 
+    const togglePayment = (order) => {
+        const nuevoEstado = order.pago_estado === 'Pagado' ? 'Pendiente' : 'Pagado';
+        updatePaymentStatus(order.id, nuevoEstado);
+    };
+
     const resetForm = () => {
         setShowForm(false);
         setIsEditing(false);
@@ -425,16 +430,37 @@ export default function Orders() {
                                 >
                                     <Trash2 size={16} />
                                 </button>
+                                
+                                <button
+                                    onClick={() => togglePayment(order)}
+                                    style={{
+                                        background: 'none', 
+                                        border: order.pago_estado === 'Pagado' ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.1)',
+                                        color: order.pago_estado === 'Pagado' ? 'var(--accent)' : 'var(--text-muted)',
+                                        cursor: 'pointer',
+                                        width: '32px', height: '32px', borderRadius: '8px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        backgroundColor: order.pago_estado === 'Pagado' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    title={order.pago_estado === 'Pagado' ? 'Pagado' : 'Marcar como Pagado'}
+                                >
+                                    <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>$</span>
+                                </button>
+
                                 <div
                                     onClick={() => {
                                         if (order.estado === 'Delivered') {
                                             setReverseModal({ show: true, id: order.id, clientName: order.clientes?.nombre_completo });
+                                        } else {
+                                            updateStatus(order.id, 'Delivered');
                                         }
                                     }}
                                     style={{
-                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem',
+                                        padding: '6px 12px', borderRadius: '12px', fontSize: '0.75rem',
                                         backgroundColor: order.estado === 'Delivered' ? 'var(--accent)' : 'var(--primary)',
-                                        color: 'white', cursor: order.estado === 'Delivered' ? 'pointer' : 'default'
+                                        color: 'white', cursor: 'pointer',
+                                        fontWeight: '600'
                                     }}
                                 >
                                     {order.estado === 'Delivered' ? 'Entregado' : 'Pendiente'}
