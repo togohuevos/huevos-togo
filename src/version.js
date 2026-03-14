@@ -1,29 +1,21 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.4';
+export const APP_VERSION = '1.3';
 
 export const CHANGELOG = [
-    {
-        version: '1.4',
-        date: '14 de marzo de 2025',
-        changes: [
-            'Priorización de pedidos: los pedidos programados para "Hoy" aparecen arriba del todo.',
-            'Vista semanal por defecto: la pestaña de Semana es ahora la principal al abrir Pedidos.',
-            'Resaltado visual: los pedidos del día actual incluyen un badge de "HOY" y un borde destacado.',
-            'Selector de vistas reordenado: Semana | Todos | Ruta.',
-        ]
-    },
     {
         version: '1.3',
         date: '14 de marzo de 2025',
         changes: [
+            'Priorización de pedidos: los pedidos programados para "Hoy" aparecen arriba del todo de los pendientes.',
+            'Resaltado visual: los pedidos del día actual incluyen un badge de "HOY" y un borde destacado.',
+            'Vista semanal por defecto: la pestaña de "Semana" es ahora la principal al abrir Pedidos.',
+            'Selector de vistas reordenado: Semana | Todos | Ruta.',
             'Al marcar un pedido como entregado, se mueve automáticamente al final de la lista.',
-            'Los pedidos entregados se ordenan del más reciente al más viejo dentro de su grupo.',
-            'Los pedidos entregados pero con pago pendiente se muestran en color amarillo translúcido.',
-            'Los pedidos entregados y pagados se muestran en color verde translúcido.',
+            'Diferenciación de pago: Amarillo (Pago Pendiente) y Verde (Pagado) para pedidos entregados.',
             'Transición animada al cambiar entre estados de entrega y pago.',
-            'En el historial del cliente, los pedidos pendientes aparecen primero y los entregados al final.',
+            'Historial del cliente: pedidos pendientes primero y entregados al final.',
         ]
     },
     {
