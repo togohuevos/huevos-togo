@@ -1,9 +1,18 @@
 // App version and changelog
 // Update this file with every new release
 
-export const APP_VERSION = '1.3.2';
+export const APP_VERSION = '1.3.3';
 
 export const CHANGELOG = [
+    {
+        version: '1.3.3',
+        date: '14 de marzo de 2026',
+        changes: [
+            'Organización de entregas por ubicación: las direcciones similares aparecen juntas automáticamente.',
+            'Prioridad mantenida: los pedidos de "HOY" siguen apareciendo arriba del todo.',
+            'Logística mejorada: clientes sin dirección registrada se desplazan al final del grupo.',
+        ]
+    },
     {
         version: '1.3.2',
         date: '14 de marzo de 2026',

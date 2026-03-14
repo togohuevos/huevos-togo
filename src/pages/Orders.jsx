@@ -333,10 +333,23 @@ export default function Orders() {
     const porEntregar = baseFiltered
         .filter(o => o.estado !== 'Delivered')
         .sort((a, b) => {
+            // Priority 1: HOY
             const isTodayA = a.fecha_entrega === todayStr;
             const isTodayB = b.fecha_entrega === todayStr;
             if (isTodayA && !isTodayB) return -1;
             if (!isTodayA && isTodayB) return 1;
+
+            // Priority 2: Dirección (Alfabético para agrupar barrios/zonas)
+            const dirA = (a.clientes?.direccion || '').trim();
+            const dirB = (b.clientes?.direccion || '').trim();
+            
+            if (dirA !== dirB) {
+                if (!dirA) return 1; // Sin dirección al final
+                if (!dirB) return -1;
+                return dirA.localeCompare(dirB, 'es', { sensitivity: 'base' });
+            }
+
+            // Priority 3: Fecha (Tie-break en misma ubicación)
             const dateA = new Date(a.created_at || 0);
             const dateB = new Date(b.created_at || 0);
             return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
