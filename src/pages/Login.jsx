@@ -15,7 +15,13 @@ export default function Login() {
 
         const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-        if (error) setError('Credenciales incorrectas o usuario no existe');
+        if (error) {
+            if (error.message && (error.message.includes('fetch') || error.message.includes('Network'))) {
+                setError('Error de conexión. El servidor de base de datos no está disponible.');
+            } else {
+                setError('Credenciales incorrectas o usuario no existe');
+            }
+        }
         setLoading(false);
     };
 
